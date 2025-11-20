@@ -25,20 +25,33 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
 
   useEffect(() => {
     if (audioRef.current) {
+      audioRef.current.loop = false; // Đảm bảo không loop từng bài
       if (isPlaying) {
-        audioRef.current.play();
+        audioRef.current.play().catch(() => {
+          // Autoplay bị chặn, chờ user tương tác
+          setIsPlaying(false);
+        });
       } else {
         audioRef.current.pause();
       }
     }
   }, [isPlaying, currentTrack]);
 
+  // Tự động phát nhạc khi component mount
+  useEffect(() => {
+    setIsPlaying(true);
+  }, []);
+
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
   };
 
   const handleNext = () => {
-    setCurrentTrack((prev) => (prev + 1) % playlist.length);
+    setCurrentTrack((prev) => {
+      const nextTrack = (prev + 1) % playlist.length;
+      return nextTrack;
+    });
+    setIsPlaying(true); // Đảm bảo tiếp tục phát
   };
 
   const handlePrevious = () => {
@@ -85,6 +98,7 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleNext}
+        loop={false}
       />
 
       <div className="flex items-center gap-3 mb-3">
