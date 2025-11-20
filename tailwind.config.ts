@@ -108,6 +108,26 @@ export default {
             transform: "translateY(-10px)",
           },
         },
+        "fadeZoom": {
+          "0%": {
+            opacity: "0",
+            transform: "scale(0.9) rotate(-2deg)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "scale(1) rotate(0deg)",
+          },
+        },
+        "scale-in": {
+          "0%": {
+            opacity: "0",
+            transform: "scale(0.8)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "scale(1)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -115,6 +135,8 @@ export default {
         "fade-in": "fade-in 0.6s ease-out",
         "slide-in": "slide-in 0.4s ease-out",
         "float": "float 3s ease-in-out infinite",
+        "fadeZoom": "fadeZoom 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+        "scale-in": "scale-in 0.5s ease-out",
       },
     },
   },
