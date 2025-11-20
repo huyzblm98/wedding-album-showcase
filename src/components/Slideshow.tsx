@@ -82,7 +82,7 @@ const Slideshow = ({ images, initialIndex, onClose }: SlideshowProps) => {
           key={currentIndex}
           src={images[currentIndex]}
           alt={`Wedding photo ${currentIndex + 1}`}
-          className="max-w-full max-h-full object-contain animate-fade-in"
+          className="max-w-full max-h-full object-contain animate-fadeZoom"
         />
       </div>
 
