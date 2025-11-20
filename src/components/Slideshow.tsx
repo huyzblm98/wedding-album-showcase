@@ -50,7 +50,7 @@ const Slideshow = ({ images, initialIndex, onClose }: SlideshowProps) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-[hsl(var(--wedding-rose))]/20 via-black to-[hsl(var(--wedding-gold))]/20 flex items-center justify-center">
       {/* Close Button */}
       <Button
         variant="ghost"

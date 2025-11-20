@@ -37,7 +37,7 @@ const MUSIC_PLAYLIST = [
 ];
 
 const Index = () => {
-  const [showSlideshow, setShowSlideshow] = useState(false);
+  const [showSlideshow, setShowSlideshow] = useState(true);
   const [slideshowIndex, setSlideshowIndex] = useState(0);
 
   const handleImageClick = (index: number) => {
@@ -51,13 +51,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--wedding-blush))] to-[hsl(var(--background))]">
-      <WeddingGallery
-        images={WEDDING_IMAGES}
-        onImageClick={handleImageClick}
-        onStartSlideshow={handleStartSlideshow}
-      />
-
+    <div className="min-h-screen">
       {showSlideshow && (
         <Slideshow
           images={WEDDING_IMAGES}
