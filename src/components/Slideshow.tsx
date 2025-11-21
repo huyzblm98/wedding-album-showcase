@@ -17,16 +17,46 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     return () => clearInterval(interval);
   }, [images.length]);
 
+  const getImageStyle = (position: number) => {
+    const distance = Math.abs(position);
+    const scale = Math.pow(0.5, distance); // Giảm 1 nửa mỗi bước
+    const translateX = position * 40; // Khoảng cách giữa các ảnh
+    const translateZ = -distance * 200; // Độ sâu 3D
+    const opacity = distance > 2 ? 0 : 1 - distance * 0.3;
+    const rotateY = position * 15; // Góc xoay
+
+    return {
+      transform: `translateX(${translateX}%) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
+      opacity,
+      zIndex: 10 - distance,
+    };
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center">
-      {/* Main Image */}
-      <div className="relative w-full h-full flex items-center justify-center p-12">
-        <img
-          key={currentIndex}
-          src={images[currentIndex]}
-          alt={`Wedding photo ${currentIndex + 1}`}
-          className="max-w-full max-h-full object-contain animate-fadeZoom"
-        />
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center overflow-hidden">
+      {/* 3D Carousel Container */}
+      <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: '2000px' }}>
+        <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
+          {images.map((image, index) => {
+            const position = index - currentIndex;
+            // Chỉ render ảnh trong phạm vi visible
+            if (Math.abs(position) > 2) return null;
+
+            return (
+              <div
+                key={index}
+                className="absolute transition-all duration-700 ease-out"
+                style={getImageStyle(position)}
+              >
+                <img
+                  src={image}
+                  alt={`Wedding photo ${index + 1}`}
+                  className="max-w-[600px] max-h-[600px] object-contain rounded-lg shadow-2xl"
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
