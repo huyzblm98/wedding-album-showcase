@@ -18,7 +18,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
   }, [images.length]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-[hsl(var(--wedding-rose))]/20 via-black to-[hsl(var(--wedding-gold))]/20 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center">
       {/* Main Image */}
       <div className="relative w-full h-full flex items-center justify-center p-12">
         <img
