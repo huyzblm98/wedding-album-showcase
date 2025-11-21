@@ -71,10 +71,6 @@ const Slideshow = ({ images, initialIndex, onClose }: SlideshowProps) => {
         {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
       </Button>
 
-      {/* Image Counter */}
-      <div className="absolute top-4 left-4 text-white text-lg font-medium z-10">
-        {currentIndex + 1} / {images.length}
-      </div>
 
       {/* Main Image */}
       <div className="relative w-full h-full flex items-center justify-center p-12">

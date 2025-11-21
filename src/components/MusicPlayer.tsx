@@ -91,7 +91,7 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
   };
 
   return (
-    <Card className="fixed bottom-4 right-4 p-4 w-80 shadow-[var(--shadow-elegant)] bg-card/95 backdrop-blur-sm z-40">
+    <Card className="fixed bottom-4 right-4 p-4 w-80 shadow-[var(--shadow-elegant)] bg-card/95 backdrop-blur-sm z-[60]">
       <audio
         ref={audioRef}
         src={playlist[currentTrack]?.src}
