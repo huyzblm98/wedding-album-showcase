@@ -15,6 +15,7 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
@@ -91,7 +92,7 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
   };
 
   return (
-    <Card className="fixed bottom-4 right-4 p-4 w-80 shadow-[var(--shadow-elegant)] bg-card/95 backdrop-blur-sm z-[60]">
+    <>
       <audio
         ref={audioRef}
         src={playlist[currentTrack]?.src}
@@ -101,66 +102,80 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
         loop={false}
       />
 
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-12 h-12 rounded-md bg-gradient-to-br from-[hsl(var(--wedding-rose))] to-[hsl(var(--wedding-gold))] flex items-center justify-center animate-float">
-          <Music className="h-6 w-6 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-sm truncate">{playlist[currentTrack]?.title}</h3>
-          <p className="text-xs text-muted-foreground">
-            Track {currentTrack + 1} of {playlist.length}
-          </p>
-        </div>
-      </div>
+      {isExpanded ? (
+        <Card className="fixed bottom-4 right-4 p-4 w-80 shadow-[var(--shadow-elegant)] bg-card/95 backdrop-blur-sm z-[60] animate-scale-in">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 rounded-md bg-gradient-to-br from-[hsl(var(--wedding-rose))] to-[hsl(var(--wedding-gold))] flex items-center justify-center">
+              <Music className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-sm truncate">{playlist[currentTrack]?.title}</h3>
+              <p className="text-xs text-muted-foreground">
+                Track {currentTrack + 1} of {playlist.length}
+              </p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setIsExpanded(false)}>
+              <Music className="h-4 w-4" />
+            </Button>
+          </div>
 
-      {/* Progress Bar */}
-      <div className="mb-3">
-        <Slider
-          value={[currentTime]}
-          max={duration || 100}
-          step={0.1}
-          onValueChange={handleSeek}
-          className="cursor-pointer"
-        />
-        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-      </div>
+          {/* Progress Bar */}
+          <div className="mb-3">
+            <Slider
+              value={[currentTime]}
+              max={duration || 100}
+              step={0.1}
+              onValueChange={handleSeek}
+              className="cursor-pointer"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
 
-      {/* Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={handlePrevious}>
-            <SkipBack className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="default"
-            size="icon"
-            onClick={togglePlay}
-            className="bg-gradient-to-r from-[hsl(var(--wedding-rose))] to-[hsl(var(--wedding-gold))] hover:opacity-90"
-          >
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleNext}>
-            <SkipForward className="h-4 w-4" />
-          </Button>
-        </div>
+          {/* Controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={handlePrevious}>
+                <SkipBack className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="default"
+                size="icon"
+                onClick={togglePlay}
+                className="bg-gradient-to-r from-[hsl(var(--wedding-rose))] to-[hsl(var(--wedding-gold))] hover:opacity-90"
+              >
+                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleNext}>
+                <SkipForward className="h-4 w-4" />
+              </Button>
+            </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={toggleMute}>
-            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </Button>
-          <Slider
-            value={[volume]}
-            max={100}
-            step={1}
-            onValueChange={(value) => setVolume(value[0])}
-            className="w-20"
-          />
-        </div>
-      </div>
-    </Card>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={toggleMute}>
+                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              </Button>
+              <Slider
+                value={[volume]}
+                max={100}
+                step={1}
+                onValueChange={(value) => setVolume(value[0])}
+                className="w-20"
+              />
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <Button
+          onClick={() => setIsExpanded(true)}
+          className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-[var(--shadow-elegant)] bg-gradient-to-br from-[hsl(var(--wedding-rose))] to-[hsl(var(--wedding-gold))] hover:opacity-90 z-[60] animate-float"
+        >
+          {isPlaying ? <Music className="h-6 w-6 text-white animate-pulse" /> : <Music className="h-6 w-6 text-white" />}
+        </Button>
+      )}
+    </>
   );
 };
 
