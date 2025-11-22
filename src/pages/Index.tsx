@@ -1,7 +1,6 @@
 import { useState } from "react";
-import WeddingGallery from "@/components/WeddingGallery";
 import Slideshow from "@/components/Slideshow";
-import MusicPlayer from "@/components/MusicPlayer";
+import MusicPlayerV2 from "@/components/MusicPlayerV2";
 
 const WEDDING_IMAGES = [
   "/images/wedding/photo1.jpg",
@@ -53,6 +52,7 @@ const Index = () => {
       )}
 
       {/* <MusicPlayer playlist={MUSIC_PLAYLIST} /> */}
+      <MusicPlayerV2 />
     </div>
   );
 };
