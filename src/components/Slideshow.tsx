@@ -63,7 +63,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
                 <img
                   src={image}
                   alt={`Wedding photo ${index + 1}`}
-                  className="max-w-[600px] max-h-[600px] object-contain rounded-lg shadow-2xl"
+                  className="max-w-[800px] max-h-[800px] object-contain rounded-lg shadow-2xl"
                 />
               </div>
             );
