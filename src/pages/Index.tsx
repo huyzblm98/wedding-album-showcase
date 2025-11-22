@@ -4,24 +4,24 @@ import Slideshow from "@/components/Slideshow";
 import MusicPlayer from "@/components/MusicPlayer";
 
 const WEDDING_IMAGES = [
-  "/images/wedding/photo1.jpg",
-  "/images/wedding/photo2.jpg",
-  "/images/wedding/photo3.jpg",
-  "/images/wedding/photo4.jpg",
-  "/images/wedding/photo5.jpg",
-  "/images/wedding/photo6.jpg",
-  "/images/wedding/photo7.jpg",
-  "/images/wedding/photo8.jpg",
-  "/images/wedding/photo9.jpg",
-  "/images/wedding/photo10.jpg",
-  "/images/wedding/photo11.jpg",
-  "/images/wedding/photo12.jpg",
-  "/images/wedding/photo13.jpg",
-  "/images/wedding/photo14.jpg",
-  "/images/wedding/photo15.jpg",
-  "/images/wedding/photo16.jpg",
-  "/images/wedding/photo17.jpg",
-  "/images/wedding/photo18.jpg",
+  "/images/wedding/1.JPG",
+  "/images/wedding/2.JPG",
+  "/images/wedding/3.JPG",
+  "/images/wedding/4.jpg",
+  "/images/wedding/5.JPG",
+  "/images/wedding/6.jpg",
+  "/images/wedding/7.JPG",
+  "/images/wedding/8.JPG",
+  "/images/wedding/9.jpg",
+  "/images/wedding/10.JPG",
+  "/images/wedding/11.JPG",
+  "/images/wedding/12.JPG",
+  "/images/wedding/13.jpg",
+  "/images/wedding/14.jpg",
+  "/images/wedding/15.jpg",
+  "/images/wedding/16.JPG",
+  "/images/wedding/17.JPG",
+  "/images/wedding/18.JPG",
 ];
 
 const MUSIC_PLAYLIST = [
@@ -52,7 +52,7 @@ const Index = () => {
         />
       )}
 
-      {/* <MusicPlayer playlist={MUSIC_PLAYLIST} /> */}
+      <MusicPlayer playlist={MUSIC_PLAYLIST} />
     </div>
   );
 };
