@@ -10,6 +10,8 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
   const [currentTrack, setCurrentTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
+  const hasPreloadedRef = useRef(false);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -22,7 +24,46 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
         audioRef.current.pause();
       }
     }
+    // Reset preload flag khi chuyển bài
+    hasPreloadedRef.current = false;
   }, [isPlaying, currentTrack]);
+
+  // Preload bài tiếp theo khi đạt 75%
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      const progress = audio.currentTime / audio.duration;
+      
+      // Khi đạt 75% và chưa preload
+      if (progress >= 0.75 && !hasPreloadedRef.current) {
+        hasPreloadedRef.current = true;
+        
+        // Tính bài tiếp theo
+        const nextTrackIndex = (currentTrack + 1) % playlist.length;
+        const nextTrackSrc = playlist[nextTrackIndex]?.src;
+        
+        if (nextTrackSrc) {
+          // Tạo Audio object mới để preload
+          preloadAudioRef.current = new Audio(nextTrackSrc);
+          preloadAudioRef.current.preload = 'auto';
+          preloadAudioRef.current.load();
+        }
+      }
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      // Cleanup preload audio nếu có
+      if (preloadAudioRef.current) {
+        preloadAudioRef.current.pause();
+        preloadAudioRef.current = null;
+      }
+    };
+  }, [currentTrack, playlist]);
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
