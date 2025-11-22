@@ -52,7 +52,7 @@ const Index = () => {
         />
       )}
 
-      <MusicPlayer playlist={MUSIC_PLAYLIST} />
+      {/* <MusicPlayer playlist={MUSIC_PLAYLIST} /> */}
     </div>
   );
 };
