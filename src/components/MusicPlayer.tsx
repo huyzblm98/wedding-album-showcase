@@ -1,17 +1,86 @@
 import { useState, useRef, useEffect } from "react";
 import { Play, Pause } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface MusicPlayerProps {
   playlist: { title: string; src: string }[];
 }
 
+// Global cache cho audio files - tồn tại suốt vòng đời app
+const audioCache = new Map<string, Blob>();
+const audioCacheUrls = new Map<string, string>();
+
+// Preload tất cả playlist vào cache
+const preloadPlaylist = async (playlist: { title: string; src: string }[]) => {
+  const promises = playlist.map(async (track) => {
+    // Nếu đã có trong cache, skip
+    if (audioCache.has(track.src)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(track.src);
+      const blob = await response.blob();
+      
+      // Lưu blob vào cache
+      audioCache.set(track.src, blob);
+      
+      // Tạo object URL từ blob
+      const objectUrl = URL.createObjectURL(blob);
+      audioCacheUrls.set(track.src, objectUrl);
+      
+      console.log(`✅ Cached: ${track.title}`);
+    } catch (error) {
+      console.error(`❌ Failed to cache: ${track.title}`, error);
+    }
+  });
+
+  await Promise.all(promises);
+};
+
+// Lấy URL từ cache hoặc src gốc
+const getAudioUrl = (src: string): string => {
+  return audioCacheUrls.get(src) || src;
+};
+
 const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
   const [currentTrack, setCurrentTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isCaching, setIsCaching] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
   const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
   const hasPreloadedRef = useRef(false);
+  const hasCachedPlaylistRef = useRef(false);
+
+  // Cache toàn bộ playlist khi component mount
+  useEffect(() => {
+    if (!hasCachedPlaylistRef.current) {
+      hasCachedPlaylistRef.current = true;
+      
+      preloadPlaylist(playlist).then(() => {
+        setIsCaching(false);
+        console.log('🎵 Playlist đã được cache!');
+      });
+    }
+  }, [playlist]);
+
+  // Preload tất cả bài còn lại khi bắt đầu phát
+  useEffect(() => {
+    if (isPlaying && !isCaching) {
+      // Background preload các bài chưa cache
+      playlist.forEach((track) => {
+        if (!audioCache.has(track.src)) {
+          fetch(track.src)
+            .then(res => res.blob())
+            .then(blob => {
+              audioCache.set(track.src, blob);
+              const objectUrl = URL.createObjectURL(blob);
+              audioCacheUrls.set(track.src, objectUrl);
+            })
+            .catch(err => console.error('Preload error:', err));
+        }
+      });
+    }
+  }, [isPlaying, isCaching, playlist]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -24,7 +93,6 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
         audioRef.current.pause();
       }
     }
-    // Reset preload flag khi chuyển bài
     hasPreloadedRef.current = false;
   }, [isPlaying, currentTrack]);
 
@@ -36,17 +104,16 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     const handleTimeUpdate = () => {
       const progress = audio.currentTime / audio.duration;
       
-      // Khi đạt 75% và chưa preload
       if (progress >= 0.75 && !hasPreloadedRef.current) {
         hasPreloadedRef.current = true;
         
-        // Tính bài tiếp theo
         const nextTrackIndex = (currentTrack + 1) % playlist.length;
         const nextTrackSrc = playlist[nextTrackIndex]?.src;
         
         if (nextTrackSrc) {
-          // Tạo Audio object mới để preload
-          preloadAudioRef.current = new Audio(nextTrackSrc);
+          // Sử dụng URL từ cache nếu có
+          const cachedUrl = getAudioUrl(nextTrackSrc);
+          preloadAudioRef.current = new Audio(cachedUrl);
           preloadAudioRef.current.preload = 'auto';
           preloadAudioRef.current.load();
         }
@@ -57,7 +124,6 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
-      // Cleanup preload audio nếu có
       if (preloadAudioRef.current) {
         preloadAudioRef.current.pause();
         preloadAudioRef.current = null;
@@ -77,21 +143,36 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     setIsPlaying(true);
   };
 
+  // Hiển thị loading khi đang cache
+  if (isCaching) {
+    return (
+      <div className="fixed bottom-4 right-4 z-[60]">
+        <div className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <audio
         ref={audioRef}
-        src={playlist[currentTrack]?.src}
+        src={getAudioUrl(playlist[currentTrack]?.src)}
         onEnded={handleNext}
         loop={false}
       />
 
-      <Button
+      <button
         onClick={togglePlay}
-        className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-[var(--shadow-elegant)] bg-gradient-to-br from-[hsl(var(--wedding-rose))] to-[hsl(var(--wedding-gold))] hover:opacity-90 z-[60] animate-float"
+        className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 z-[60] flex items-center justify-center transition-all hover:scale-110"
       >
-        {isPlaying ? <Pause className="h-6 w-6 text-white" /> : <Play className="h-6 w-6 text-white" />}
-      </Button>
+        {isPlaying ? (
+          <Pause className="h-6 w-6 text-white" />
+        ) : (
+          <Play className="h-6 w-6 text-white ml-0.5" />
+        )}
+      </button>
     </>
   );
 };
