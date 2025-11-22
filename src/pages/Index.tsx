@@ -4,6 +4,8 @@ import MusicPlayerV2 from "@/components/MusicPlayerV2";
 
 const WEDDING_IMAGES = [
   "/images/wedding/photo1.jpg",
+  "/images/wedding/photo15.jpg",
+  "/images/wedding/photo16.jpg",
   "/images/wedding/photo2.jpg",
   "/images/wedding/photo3.jpg",
   "/images/wedding/photo4.jpg",
@@ -17,10 +19,6 @@ const WEDDING_IMAGES = [
   "/images/wedding/photo12.jpg",
   "/images/wedding/photo13.jpg",
   "/images/wedding/photo14.jpg",
-  "/images/wedding/photo15.jpg",
-  "/images/wedding/photo16.jpg",
-  "/images/wedding/photo17.jpg",
-  "/images/wedding/photo18.jpg",
 ];
 
 const MUSIC_FILE = "/music/all.mp3";
