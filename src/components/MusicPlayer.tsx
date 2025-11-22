@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface MusicPlayerProps {
   playlist: { title: string; src: string }[];
@@ -143,10 +143,18 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     setIsPlaying(true);
   };
 
+  const handlePrevious = () => {
+    setCurrentTrack((prev) => {
+      const prevTrack = (prev - 1 + playlist.length) % playlist.length;
+      return prevTrack;
+    });
+    setIsPlaying(true);
+  };
+
   // Hiển thị loading khi đang cache
   if (isCaching) {
     return (
-      <div className="fixed bottom-4 right-4 z-[60]">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60]">
         <div className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
         </div>
@@ -163,16 +171,39 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
         loop={false}
       />
 
-      <button
-        onClick={togglePlay}
-        className="fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 z-[60] flex items-center justify-center transition-all hover:scale-110"
-      >
-        {isPlaying ? (
-          <Pause className="h-6 w-6 text-white" />
-        ) : (
-          <Play className="h-6 w-6 text-white ml-0.5" />
-        )}
-      </button>
+      {/* Music Controls - Bottom Center */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3">
+        {/* Previous Button */}
+        <button
+          onClick={handlePrevious}
+          className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110"
+          title="Bài trước"
+        >
+          <ChevronLeft className="h-6 w-6 text-white" />
+        </button>
+
+        {/* Play/Pause Button */}
+        <button
+          onClick={togglePlay}
+          className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110"
+          title={isPlaying ? "Tạm dừng" : "Phát nhạc"}
+        >
+          {isPlaying ? (
+            <Pause className="h-6 w-6 text-white" />
+          ) : (
+            <Play className="h-6 w-6 text-white ml-0.5" />
+          )}
+        </button>
+
+        {/* Next Button */}
+        <button
+          onClick={handleNext}
+          className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110"
+          title="Bài tiếp theo"
+        >
+          <ChevronRight className="h-6 w-6 text-white" />
+        </button>
+      </div>
     </>
   );
 };
