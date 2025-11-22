@@ -17,6 +17,18 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     return () => clearInterval(interval);
   }, [images.length]);
 
+  // Tính toán vị trí circular (vòng tròn)
+  const getCircularPosition = (index: number, current: number, total: number) => {
+    let position = index - current;
+    // Điều chỉnh để có khoảng cách ngắn nhất (circular)
+    if (position > total / 2) {
+      position -= total;
+    } else if (position < -total / 2) {
+      position += total;
+    }
+    return position;
+  };
+
   const getImageStyle = (position: number) => {
     const distance = Math.abs(position);
     const scale = Math.pow(0.5, distance); // Giảm 1 nửa mỗi bước
@@ -38,7 +50,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
       <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: '2000px' }}>
         <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
           {images.map((image, index) => {
-            const position = index - currentIndex;
+            const position = getCircularPosition(index, currentIndex, images.length);
             // Chỉ render ảnh trong phạm vi visible
             if (Math.abs(position) > 2) return null;
 

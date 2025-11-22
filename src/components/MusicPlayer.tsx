@@ -38,11 +38,6 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     }
   }, [isPlaying, currentTrack]);
 
-  // Tự động phát nhạc khi component mount
-  useEffect(() => {
-    setIsPlaying(true);
-  }, []);
-
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
   };
