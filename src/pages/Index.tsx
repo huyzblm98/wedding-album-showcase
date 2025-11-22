@@ -16,7 +16,7 @@ const WEDDING_IMAGES = [
   "/images/wedding/10.JPG",
   "/images/wedding/11.JPG",
   "/images/wedding/12.JPG",
-  "/images/wedding/13.jpg",
+  "/images/wedding/13.JPG",
   "/images/wedding/14.jpg",
   "/images/wedding/15.jpg",
   "/images/wedding/16.JPG",
