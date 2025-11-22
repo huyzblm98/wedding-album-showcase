@@ -36,10 +36,9 @@ const MUSIC_PLAYLIST = [
   { title: "Ngày Này Người Con Gái Này", src: "/music/Ngày Này Người Con Gái Này.mp3" },
   { title: "Ngày Đầu Tiên", src: "/music/ngay_dau_tien.mp3" },
   { title: "Nơi Này Có Anh", src: "/music/Nơi Này Có Anh.mp3" },
-  { title: "Ta Là Của Nhau", src: "/music/Ta Là Của Nhau.mp3" },
   { title: "Sugar", src: "/music/Sugar.mp3" },
-  { title: "", src: "/music/.mp3" },
-  { title: "", src: "/music/.mp3" },
+  { title: "Ta Là Của Nhau", src: "/music/Ta Là Của Nhau.mp3" },
+  { title: "Until You", src: "/music/Until You.mp3" },
 ];
 
 const Index = () => {
