@@ -25,15 +25,21 @@ const WEDDING_IMAGES = [
 ];
 
 const MUSIC_PLAYLIST = [
-  { title: "Bài Này Không Để Đi Diễn", src: "/music/bai_nay_khong_de_di_dien.mp3" },
-  { title: "Chỉ Cần Có Nhau", src: "/music/chi_can_co_nhau.mp3" },
-  { title: "Em Đồng Ý", src: "/music/em_dong_y.mp3" },
-  { title: "Hơn Cả Yêu", src: "/music/hon_ca_yeu.mp3" },
-  { title: "Một Đời", src: "/music/mot_doi.mp3" },
-  { title: "Ngày Này Người Con Gái Này", src: "/music/nga_nay_nguoi_con_gai_nay.mp3" },
+  { title: "Bài Này Không Để Đi Diễn", src: "/music/Bài Này Không Để Đi Diễn.mp3" },
+  { title: "Beautiful In White", src: "/music/Beautiful In White.mp3" },
+  { title: "Chỉ Cần Có Nhau", src: "/music/Chỉ Cần Có Nhau.mp3" },
+  { title: "Cưới Thôi", src: "/music/Cưới Thôi.mp3" },
+  { title: "Em Đồng Ý", src: "/music/Em Đồng Ý.mp3" },
+  { title: "Hơn Cả Yêu", src: "/music/Hơn Cả Yêu.mp3" },
+  { title: "Lễ Đường", src: "/music/Lễ Đường.mp3" },
+  { title: "Một Đời", src: "/music/Một Đời.mp3" },
+  { title: "Ngày Này Người Con Gái Này", src: "/music/Ngày Này Người Con Gái Này.mp3" },
   { title: "Ngày Đầu Tiên", src: "/music/ngay_dau_tien.mp3" },
-  { title: "Nơi Này Có Em", src: "/music/noi_nay_co_em.mp3" },
-  { title: "Ta Là Của Nhau", src: "/music/ta_la_cua_nhau.mp3" },
+  { title: "Nơi Này Có Anh", src: "/music/Nơi Này Có Anh.mp3" },
+  { title: "Ta Là Của Nhau", src: "/music/Ta Là Của Nhau.mp3" },
+  { title: "Sugar", src: "/music/Sugar.mp3" },
+  { title: "", src: "/music/.mp3" },
+  { title: "", src: "/music/.mp3" },
 ];
 
 const Index = () => {
