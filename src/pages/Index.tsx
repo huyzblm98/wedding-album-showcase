@@ -23,7 +23,23 @@ const WEDDING_IMAGES = [
 ];
 
 const MUSIC_PLAYLIST = [
-  { title: "Playlist", src: "/music/all.mp3" },
+  { title: "Bài Này Không Để Đi Diễn", src: "/music/1.mp3" },
+  { title: "Beautiful In White", src: "/music/2.mp3" },
+  { title: "Chỉ Cần Có Nhau", src: "/music/3.mp3" },
+  { title: "Cưới Thôi", src: "/music/4.mp3" },
+  { title: "Oah", src: "/music/16.mp3" },
+  { title: "Em Đồng Ý", src: "/music/5.mp3" },
+  { title: "Hơn Cả Yêu", src: "/music/6.mp3" },
+  { title: "Lễ Đường", src: "/music/7.mp3" },
+  { title: "Một Đời", src: "/music/8.mp3" },
+  { title: "My Love", src: "/music/9.mp3" },
+  { title: "Ngày Này Người Con Gái Này", src: "/music/10.mp3" },
+  { title: "Ngày Đầu Tiên", src: "/music/11.mp3" },
+  { title: "Nơi Này Có Anh", src: "/music/12.mp3" },
+  { title: "Sugar", src: "/music/13.mp3" },
+  { title: "Ta Là Của Nhau", src: "/music/14.mp3" },
+  { title: "Until You", src: "/music/15.mp3" },
+  //{ title: "Playlist", src: "/music/all.mp3" },
 ];
 
 const Index = () => {
