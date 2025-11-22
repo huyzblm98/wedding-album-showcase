@@ -8,27 +8,28 @@ const MusicPlayerV2 = () => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Preload nhạc ngay khi component mount
-    audio.load();
-
     // Hàm để bắt đầu phát nhạc
     const startMusic = () => {
       if (!hasStartedRef.current) {
+        // Nhạc đã được preload rồi, nên play luôn
         audio.play().catch((error) => {
           console.log("Autoplay bị chặn:", error);
-          // Nếu autoplay bị chặn, chờ user tương tác
-          document.addEventListener('click', () => {
+          // Nếu autoplay bị chặn, chờ user tương tác bất kỳ
+          const playOnInteraction = () => {
             if (!hasStartedRef.current) {
               audio.play();
               hasStartedRef.current = true;
             }
-          }, { once: true });
+          };
+          
+          document.addEventListener('click', playOnInteraction, { once: true });
+          document.addEventListener('touchstart', playOnInteraction, { once: true });
         });
         hasStartedRef.current = true;
       }
     };
 
-    // Thử phát ngay
+    // Phát ngay khi component mount (sau khi preload xong)
     startMusic();
 
     // Cleanup
