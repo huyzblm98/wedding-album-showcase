@@ -5,6 +5,9 @@ import MusicPlayer from "@/components/MusicPlayer";
 
 const WEDDING_IMAGES = [
   "/images/wedding/1.JPG",
+  "/images/wedding/15.jpg",
+  "/images/wedding/16.JPG",
+  "/images/wedding/17.JPG",
   "/images/wedding/2.JPG",
   "/images/wedding/3.JPG",
   "/images/wedding/4.jpg",
@@ -18,10 +21,6 @@ const WEDDING_IMAGES = [
   "/images/wedding/12.JPG",
   "/images/wedding/13.jpg",
   "/images/wedding/14.jpg",
-  "/images/wedding/15.jpg",
-  "/images/wedding/16.JPG",
-  "/images/wedding/17.JPG",
-  "/images/wedding/18.JPG",
 ];
 
 const MUSIC_PLAYLIST = [
