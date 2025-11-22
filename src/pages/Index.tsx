@@ -51,7 +51,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/images/background/background_damngo.png)' }}>
       {showSlideshow && (
         <Slideshow
           images={WEDDING_IMAGES}
