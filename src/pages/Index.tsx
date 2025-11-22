@@ -29,6 +29,7 @@ const MUSIC_PLAYLIST = [
   { title: "Beautiful In White", src: "/music/2.mp3" },
   { title: "Chỉ Cần Có Nhau", src: "/music/3.mp3" },
   { title: "Cưới Thôi", src: "/music/4.mp3" },
+  { title: "Oah", src: "/music/16.mp3" },
   { title: "Em Đồng Ý", src: "/music/5.mp3" },
   { title: "Hơn Cả Yêu", src: "/music/6.mp3" },
   { title: "Lễ Đường", src: "/music/7.mp3" },
