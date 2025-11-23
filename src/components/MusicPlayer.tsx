@@ -83,6 +83,49 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     }
   }, [isPlaying, isCaching, playlist]);
 
+  // Control play/pause
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.loop = false;
+      if (isPlaying) {
+        audioRef.current.play().catch(() => {
+          setIsPlaying(false);
+        });
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying, currentTrack]);
+
+  // Giám sát trạng thái audio để phát hiện vấn đề (chỉ log, không retry)
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleError = (e: Event) => {
+      console.error('❌ Audio error:', e);
+      setIsPlaying(false);
+    };
+
+    const handleStalled = () => {
+      console.warn('⚠️ Audio stalled - buffering...');
+    };
+
+    const handleWaiting = () => {
+      console.log('⏳ Audio waiting for data...');
+    };
+
+    audio.addEventListener('error', handleError);
+    audio.addEventListener('stalled', handleStalled);
+    audio.addEventListener('waiting', handleWaiting);
+
+    return () => {
+      audio.removeEventListener('error', handleError);
+      audio.removeEventListener('stalled', handleStalled);
+      audio.removeEventListener('waiting', handleWaiting);
+    };
+  }, []);
+
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
   };
