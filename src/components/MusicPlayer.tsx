@@ -3,7 +3,7 @@ import { Play, Pause, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface MusicPlayerProps {
   playlist: { title: string; src: string }[];
-  autoPlay?: boolean;
+  globalClickToggle?: boolean;
 }
 
 const audioCache = new Map();
@@ -36,18 +36,16 @@ const getAudioUrl = (src) => {
   return audioCacheUrls.get(src) || src;
 };
 
-const MusicPlayer = ({ playlist, autoPlay = true }) => {
+const MusicPlayer = ({ playlist, globalClickToggle = true }) => {
   const [currentTrack, setCurrentTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isCaching, setIsCaching] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [autoPlayBlocked, setAutoPlayBlocked] = useState(false);
   const audioRef = useRef(null);
   const hasCachedPlaylistRef = useRef(false);
   const clickTimeoutRef = useRef(null);
   const touchHandledRef = useRef(false);
-  const autoPlayAttempted = useRef(false);
-  const retryTimeoutRef = useRef(null);
+  const buttonRefs = useRef(new Set());
 
   useEffect(() => {
     if (!hasCachedPlaylistRef.current) {
@@ -56,17 +54,9 @@ const MusicPlayer = ({ playlist, autoPlay = true }) => {
       preloadPlaylist(playlist).then(() => {
         setIsCaching(false);
         console.log('🎵 Playlist đã được cache!');
-        
-        // Tự động phát nhạc sau khi cache xong
-        if (autoPlay && !autoPlayAttempted.current) {
-          autoPlayAttempted.current = true;
-          setTimeout(() => {
-            tryAutoPlay();
-          }, 500);
-        }
       });
     }
-  }, [playlist, autoPlay]);
+  }, [playlist]);
 
   useEffect(() => {
     if (isPlaying && !isCaching) {
@@ -127,78 +117,57 @@ const MusicPlayer = ({ playlist, autoPlay = true }) => {
     };
   }, []);
 
-  // Thử tự động phát nhạc
-  const tryAutoPlay = async () => {
-    if (!audioRef.current || isCaching) return;
-
-    try {
-      await audioRef.current.play();
-      setIsPlaying(true);
-      setAutoPlayBlocked(false);
-      console.log('✅ Autoplay thành công!');
-    } catch (error) {
-      console.warn('⚠️ Autoplay bị chặn:', error);
-      setAutoPlayBlocked(true);
-      setIsPlaying(false);
-      
-      // Thử lại sau 3 giây
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-      }
-      retryTimeoutRef.current = setTimeout(() => {
-        console.log('🔄 Thử autoplay lại...');
-        tryAutoPlay();
-      }, 3000);
-    }
-  };
-
-  // Cleanup retry timeout
+  // Global click/touch toggle
   useEffect(() => {
-    return () => {
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-      }
-    };
-  }, []);
+    if (!globalClickToggle || isCaching) return;
 
-  // Lắng nghe user interaction để unlock autoplay
-  useEffect(() => {
-    if (!autoPlayBlocked) return;
-
-    const handleInteraction = () => {
-      console.log('👆 User tương tác - thử autoplay lại');
-      tryAutoPlay();
-    };
-
-    // Lắng nghe nhiều loại events
-    const events = ['click', 'touchstart', 'keydown'];
-    events.forEach(event => {
-      document.addEventListener(event, handleInteraction, { once: true });
-    });
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, handleInteraction);
+    const handleGlobalClick = (e) => {
+      // Kiểm tra xem có phải click vào button không
+      let isButtonClick = false;
+      buttonRefs.current.forEach(ref => {
+        if (ref && ref.contains(e.target)) {
+          isButtonClick = true;
+        }
       });
+
+      // Nếu click vào button, để button xử lý
+      if (isButtonClick) return;
+
+      // Click ở nơi khác → toggle play/pause
+      setIsPlaying(prev => !prev);
     };
-  }, [autoPlayBlocked]);
+
+    const handleGlobalTouch = (e) => {
+      // Kiểm tra xem có phải touch vào button không
+      let isButtonTouch = false;
+      buttonRefs.current.forEach(ref => {
+        if (ref && ref.contains(e.target)) {
+          isButtonTouch = true;
+        }
+      });
+
+      if (isButtonTouch) return;
+
+      setIsPlaying(prev => !prev);
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    document.addEventListener('touchend', handleGlobalTouch);
+
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+      document.removeEventListener('touchend', handleGlobalTouch);
+    };
+  }, [globalClickToggle, isCaching]);
 
   const togglePlay = () => {
-    const newState = !isPlaying;
-    setIsPlaying(newState);
-    
-    // Reset autoplay blocked khi user manually play
-    if (newState && autoPlayBlocked) {
-      setAutoPlayBlocked(false);
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-      }
-    }
+    setIsPlaying(!isPlaying);
   };
 
   // Handle both touch and click for Smart TV compatibility
   const handleMainButtonTouch = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     touchHandledRef.current = true;
     
     if (clickTimeoutRef.current) {
@@ -215,6 +184,8 @@ const MusicPlayer = ({ playlist, autoPlay = true }) => {
   };
 
   const handleMainButtonClick = (e) => {
+    e.stopPropagation();
+    
     // Prevent double-firing on touch devices
     if (touchHandledRef.current) {
       touchHandledRef.current = false;
@@ -281,12 +252,11 @@ const MusicPlayer = ({ playlist, autoPlay = true }) => {
         crossOrigin="anonymous"
       />
 
-      {/* Thông báo autoplay bị chặn */}
-      {autoPlayBlocked && (
-        <div className="fixed top-20 right-4 z-[60] animate-in fade-in slide-in-from-right duration-300">
-          <div className="bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-xs">
-            <p className="text-sm font-medium">🔇 Nhạc chưa phát</p>
-            <p className="text-xs mt-1 opacity-90">Click vào bất kỳ đâu để bật nhạc</p>
+      {/* Thông báo global click */}
+      {globalClickToggle && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] pointer-events-none">
+          <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm backdrop-blur-sm">
+            💡 Click ở đâu cũng được để {isPlaying ? 'tắt' : 'bật'} nhạc
           </div>
         </div>
       )}
@@ -294,9 +264,11 @@ const MusicPlayer = ({ playlist, autoPlay = true }) => {
       <div className="fixed top-4 right-4 z-[60] flex items-center gap-3">
         {isExpanded && (
           <button
+            ref={(el) => el && buttonRefs.current.add(el)}
             onClick={handlePrevious}
             onTouchStart={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               handlePrevious(e);
             }}
             className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 animate-in fade-in zoom-in duration-200 cursor-pointer"
@@ -308,6 +280,7 @@ const MusicPlayer = ({ playlist, autoPlay = true }) => {
         )}
 
         <button
+          ref={(el) => el && buttonRefs.current.add(el)}
           onClick={handleMainButtonClick}
           onTouchStart={handleMainButtonTouch}
           className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
@@ -323,9 +296,11 @@ const MusicPlayer = ({ playlist, autoPlay = true }) => {
 
         {isExpanded && (
           <button
+            ref={(el) => el && buttonRefs.current.add(el)}
             onClick={handleNext}
             onTouchStart={(e) => {
               e.preventDefault();
+              e.stopPropagation();
               handleNext(e);
             }}
             className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 animate-in fade-in zoom-in duration-200 cursor-pointer"
