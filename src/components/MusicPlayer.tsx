@@ -3,16 +3,14 @@ import { Play, Pause, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface MusicPlayerProps {
   playlist: { title: string; src: string }[];
+  autoPlay?: boolean;
 }
 
-// Global cache cho audio files - tồn tại suốt vòng đời app
-const audioCache = new Map<string, Blob>();
-const audioCacheUrls = new Map<string, string>();
+const audioCache = new Map();
+const audioCacheUrls = new Map();
 
-// Preload tất cả playlist vào cache
-const preloadPlaylist = async (playlist: { title: string; src: string }[]) => {
+const preloadPlaylist = async (playlist) => {
   const promises = playlist.map(async (track) => {
-    // Nếu đã có trong cache, skip
     if (audioCache.has(track.src)) {
       return;
     }
@@ -21,10 +19,7 @@ const preloadPlaylist = async (playlist: { title: string; src: string }[]) => {
       const response = await fetch(track.src);
       const blob = await response.blob();
       
-      // Lưu blob vào cache
       audioCache.set(track.src, blob);
-      
-      // Tạo object URL từ blob
       const objectUrl = URL.createObjectURL(blob);
       audioCacheUrls.set(track.src, objectUrl);
       
@@ -37,21 +32,23 @@ const preloadPlaylist = async (playlist: { title: string; src: string }[]) => {
   await Promise.all(promises);
 };
 
-// Lấy URL từ cache hoặc src gốc
-const getAudioUrl = (src: string): string => {
+const getAudioUrl = (src) => {
   return audioCacheUrls.get(src) || src;
 };
 
-const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
+const MusicPlayer = ({ playlist, autoPlay = true }) => {
   const [currentTrack, setCurrentTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isCaching, setIsCaching] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const [autoPlayBlocked, setAutoPlayBlocked] = useState(false);
+  const audioRef = useRef(null);
   const hasCachedPlaylistRef = useRef(false);
-  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const clickTimeoutRef = useRef(null);
+  const touchHandledRef = useRef(false);
+  const autoPlayAttempted = useRef(false);
+  const retryTimeoutRef = useRef(null);
 
-  // Cache toàn bộ playlist khi component mount
   useEffect(() => {
     if (!hasCachedPlaylistRef.current) {
       hasCachedPlaylistRef.current = true;
@@ -59,14 +56,20 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
       preloadPlaylist(playlist).then(() => {
         setIsCaching(false);
         console.log('🎵 Playlist đã được cache!');
+        
+        // Tự động phát nhạc sau khi cache xong
+        if (autoPlay && !autoPlayAttempted.current) {
+          autoPlayAttempted.current = true;
+          setTimeout(() => {
+            tryAutoPlay();
+          }, 500);
+        }
       });
     }
-  }, [playlist]);
+  }, [playlist, autoPlay]);
 
-  // Preload tất cả bài còn lại khi bắt đầu phát
   useEffect(() => {
     if (isPlaying && !isCaching) {
-      // Background preload các bài chưa cache (nếu có)
       playlist.forEach((track) => {
         if (!audioCache.has(track.src)) {
           fetch(track.src)
@@ -83,7 +86,6 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     }
   }, [isPlaying, isCaching, playlist]);
 
-  // Control play/pause
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.loop = false;
@@ -97,12 +99,11 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     }
   }, [isPlaying, currentTrack]);
 
-  // Giám sát trạng thái audio để phát hiện vấn đề (chỉ log, không retry)
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleError = (e: Event) => {
+    const handleError = (e) => {
       console.error('❌ Audio error:', e);
       setIsPlaying(false);
     };
@@ -126,28 +127,118 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     };
   }, []);
 
-  const togglePlay = () => {
-    setIsPlaying(!isPlaying);
+  // Thử tự động phát nhạc
+  const tryAutoPlay = async () => {
+    if (!audioRef.current || isCaching) return;
+
+    try {
+      await audioRef.current.play();
+      setIsPlaying(true);
+      setAutoPlayBlocked(false);
+      console.log('✅ Autoplay thành công!');
+    } catch (error) {
+      console.warn('⚠️ Autoplay bị chặn:', error);
+      setAutoPlayBlocked(true);
+      setIsPlaying(false);
+      
+      // Thử lại sau 3 giây
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+      retryTimeoutRef.current = setTimeout(() => {
+        console.log('🔄 Thử autoplay lại...');
+        tryAutoPlay();
+      }, 3000);
+    }
   };
 
-  const handleMainButtonClick = () => {
-    // Clear timeout nếu có
+  // Cleanup retry timeout
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Lắng nghe user interaction để unlock autoplay
+  useEffect(() => {
+    if (!autoPlayBlocked) return;
+
+    const handleInteraction = () => {
+      console.log('👆 User tương tác - thử autoplay lại');
+      tryAutoPlay();
+    };
+
+    // Lắng nghe nhiều loại events
+    const events = ['click', 'touchstart', 'keydown'];
+    events.forEach(event => {
+      document.addEventListener(event, handleInteraction, { once: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleInteraction);
+      });
+    };
+  }, [autoPlayBlocked]);
+
+  const togglePlay = () => {
+    const newState = !isPlaying;
+    setIsPlaying(newState);
+    
+    // Reset autoplay blocked khi user manually play
+    if (newState && autoPlayBlocked) {
+      setAutoPlayBlocked(false);
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    }
+  };
+
+  // Handle both touch and click for Smart TV compatibility
+  const handleMainButtonTouch = (e) => {
+    e.preventDefault();
+    touchHandledRef.current = true;
+    
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = null;
-      // Double click - expand
       setIsExpanded(true);
       return;
     }
 
-    // Single click - toggle play/pause
     clickTimeoutRef.current = setTimeout(() => {
       togglePlay();
       clickTimeoutRef.current = null;
     }, 300);
   };
 
-  const handleNext = () => {
+  const handleMainButtonClick = (e) => {
+    // Prevent double-firing on touch devices
+    if (touchHandledRef.current) {
+      touchHandledRef.current = false;
+      return;
+    }
+    
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+      setIsExpanded(true);
+      return;
+    }
+
+    clickTimeoutRef.current = setTimeout(() => {
+      togglePlay();
+      clickTimeoutRef.current = null;
+    }, 300);
+  };
+
+  const handleNext = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setCurrentTrack((prev) => {
       const nextTrack = (prev + 1) % playlist.length;
       return nextTrack;
@@ -156,7 +247,11 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     setIsExpanded(false);
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setCurrentTrack((prev) => {
       const prevTrack = (prev - 1 + playlist.length) % playlist.length;
       return prevTrack;
@@ -165,7 +260,6 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     setIsExpanded(false);
   };
 
-  // Hiển thị loading khi đang cache
   if (isCaching) {
     return (
       <div className="fixed top-4 right-4 z-[60]">
@@ -187,24 +281,38 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
         crossOrigin="anonymous"
       />
 
-      {/* Music Controls - Top Right */}
+      {/* Thông báo autoplay bị chặn */}
+      {autoPlayBlocked && (
+        <div className="fixed top-20 right-4 z-[60] animate-in fade-in slide-in-from-right duration-300">
+          <div className="bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-xs">
+            <p className="text-sm font-medium">🔇 Nhạc chưa phát</p>
+            <p className="text-xs mt-1 opacity-90">Click vào bất kỳ đâu để bật nhạc</p>
+          </div>
+        </div>
+      )}
+
       <div className="fixed top-4 right-4 z-[60] flex items-center gap-3">
-        {/* Previous Button - chỉ hiện khi expanded */}
         {isExpanded && (
           <button
             onClick={handlePrevious}
-            className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 animate-in fade-in zoom-in duration-200"
+            onTouchStart={(e) => {
+              e.preventDefault();
+              handlePrevious(e);
+            }}
+            className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 animate-in fade-in zoom-in duration-200 cursor-pointer"
             title="Bài trước"
+            style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
           >
             <ChevronLeft className="h-6 w-6 text-white" />
           </button>
         )}
 
-        {/* Main Play/Pause Button */}
         <button
           onClick={handleMainButtonClick}
-          className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110"
+          onTouchStart={handleMainButtonTouch}
+          className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
           title={isExpanded ? "Click 1 lần: Play/Pause" : "Click 1 lần: Play/Pause | Click 2 lần: Hiện controls"}
+          style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
         >
           {isPlaying ? (
             <Pause className="h-6 w-6 text-white" />
@@ -213,12 +321,16 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
           )}
         </button>
 
-        {/* Next Button - chỉ hiện khi expanded */}
         {isExpanded && (
           <button
             onClick={handleNext}
-            className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 animate-in fade-in zoom-in duration-200"
+            onTouchStart={(e) => {
+              e.preventDefault();
+              handleNext(e);
+            }}
+            className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 animate-in fade-in zoom-in duration-200 cursor-pointer"
             title="Bài tiếp theo"
+            style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
           >
             <ChevronRight className="h-6 w-6 text-white" />
           </button>
