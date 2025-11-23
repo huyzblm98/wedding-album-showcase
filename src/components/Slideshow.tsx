@@ -6,11 +6,10 @@ interface SlideshowProps {
   onClose: () => void;
 }
 
-// Cache ảnh với memory management
-const imageCache = new Map<string, HTMLImageElement>();
-const CACHE_LIMIT = 20; // Giới hạn cache để tránh memory leak
+const imageCache = new Map();
+const CACHE_LIMIT = 20;
 
-const addToCache = (src: string, img: HTMLImageElement) => {
+const addToCache = (src, img) => {
   if (imageCache.size >= CACHE_LIMIT) {
     const firstKey = imageCache.keys().next().value;
     imageCache.delete(firstKey);
@@ -18,16 +17,28 @@ const addToCache = (src: string, img: HTMLImageElement) => {
   imageCache.set(src, img);
 };
 
-const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
+const Slideshow = ({ images, initialIndex }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
-  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [loadedImages, setLoadedImages] = useState(new Set());
+  const [use3D, setUse3D] = useState(true);
 
-  // Preload ảnh với tối ưu hóa cho TV
+  // Detect 3D transform support
+  useEffect(() => {
+    const testEl = document.createElement('div');
+    const has3D = (
+      'WebkitPerspective' in testEl.style ||
+      'MozPerspective' in testEl.style ||
+      'perspective' in testEl.style
+    );
+    setUse3D(has3D);
+    console.log('3D Support:', has3D);
+  }, []);
+
+  // Preload images
   useEffect(() => {
     let mounted = true;
-    let animationFrameId: number;
 
     const loadImagesOptimized = async () => {
       if (!mounted) return;
@@ -40,7 +51,6 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
         setLoadProgress((loadedCount / total) * 100);
       };
 
-      // Load ảnh hiện tại và 2 ảnh kế tiếp trước
       const priorityIndices = [
         currentIndex,
         (currentIndex + 1) % total,
@@ -49,7 +59,6 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
         (currentIndex - 2 + total) % total,
       ];
 
-      // Load ảnh ưu tiên trước
       for (const index of priorityIndices) {
         if (!mounted) break;
         
@@ -60,7 +69,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
           continue;
         }
 
-        await new Promise<void>((resolve) => {
+        await new Promise((resolve) => {
           const img = new Image();
           img.onload = () => {
             if (mounted) {
@@ -81,11 +90,9 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
           img.src = src;
         });
 
-        // Thêm delay nhỏ để tránh block UI
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      // Load các ảnh còn lại trong background
       if (mounted) {
         for (let i = 0; i < total; i++) {
           if (!mounted) break;
@@ -113,44 +120,21 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
 
     return () => {
       mounted = false;
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
     };
-  }, [images, currentIndex]);
+  }, [images, currentIndex, loadedImages]);
 
-  // Slideshow auto-play với requestAnimationFrame
+  // Auto-play slideshow
   useEffect(() => {
     if (isLoading) return;
 
-    let mounted = true;
-    let lastTime = 0;
-    const interval = 4000; // 4 seconds
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 4000);
 
-    const animate = (time: number) => {
-      if (!mounted) return;
-
-      if (!lastTime) lastTime = time;
-      const delta = time - lastTime;
-
-      if (delta >= interval) {
-        setCurrentIndex(prev => (prev + 1) % images.length);
-        lastTime = time;
-      }
-
-      requestAnimationFrame(animate);
-    };
-
-    const animationId = requestAnimationFrame(animate);
-
-    return () => {
-      mounted = false;
-      cancelAnimationFrame(animationId);
-    };
+    return () => clearInterval(interval);
   }, [images.length, isLoading]);
 
-  // Memoize các hàm tính toán để tránh re-render không cần thiết
-  const getCircularPosition = useCallback((index: number, current: number, total: number) => {
+  const getCircularPosition = useCallback((index, current, total) => {
     let position = index - current;
     if (position > total / 2) {
       position -= total;
@@ -160,22 +144,61 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     return position;
   }, []);
 
-  const getImageStyle = useCallback((position: number) => {
+  // 3D style with vendor prefixes
+  const get3DImageStyle = useCallback((position) => {
     const distance = Math.abs(position);
-    const scale = Math.pow(0.5, distance);
-    const translateX = position * 40;
-    const translateZ = -distance * 200;
-    const opacity = distance > 2 ? 0 : 1 - distance * 0.3;
-    const rotateY = position * 15;
+    const scale = Math.pow(0.6, distance);
+    const translateX = position * 50;
+    const translateZ = -distance * 300;
+    const opacity = distance > 2 ? 0 : 1 - distance * 0.25;
+    const rotateY = position * 12;
+
+    const transform = `translateX(${translateX}%) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`;
 
     return {
-      transform: `translateX(${translateX}%) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
+      transform: transform,
+      WebkitTransform: transform,
+      MozTransform: transform,
+      msTransform: transform,
+      OTransform: transform,
       opacity,
       zIndex: 10 - distance,
     };
   }, []);
 
-  // Preload ảnh tiếp theo khi currentIndex thay đổi
+  // 2D fallback style
+  const get2DImageStyle = useCallback((position) => {
+    const distance = Math.abs(position);
+    
+    if (position === 0) {
+      return {
+        transform: 'translateX(-50%) scale(1)',
+        WebkitTransform: 'translateX(-50%) scale(1)',
+        left: '50%',
+        opacity: 1,
+        zIndex: 10,
+      };
+    }
+    
+    const scale = Math.pow(0.7, distance);
+    const translateX = position * 30;
+    const opacity = distance > 2 ? 0 : 1 - distance * 0.35;
+    
+    const transform = `translateX(${translateX}%) scale(${scale})`;
+
+    return {
+      transform: transform,
+      WebkitTransform: transform,
+      MozTransform: transform,
+      msTransform: transform,
+      OTransform: transform,
+      left: position < 0 ? '20%' : '80%',
+      opacity,
+      zIndex: 10 - distance,
+    };
+  }, []);
+
+  // Preload next image
   useEffect(() => {
     if (isLoading) return;
 
@@ -189,7 +212,6 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     }
   }, [currentIndex, images, isLoading, loadedImages]);
 
-  // Hiển thị loading screen
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center">
@@ -208,24 +230,49 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     );
   }
 
+  const containerStyle = use3D ? {
+    perspective: '2500px',
+    WebkitPerspective: '2500px',
+    MozPerspective: '2500px',
+  } : {};
+
+  const innerStyle = use3D ? {
+    transformStyle: 'preserve-3d',
+    WebkitTransformStyle: 'preserve-3d',
+    MozTransformStyle: 'preserve-3d',
+  } : {};
+
   return (
     <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center overflow-hidden">
-      <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: '2000px' }}>
-        <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
+      <div 
+        className="relative w-full h-full flex items-center justify-center" 
+        style={containerStyle}
+      >
+        <div 
+          className="relative w-full h-full flex items-center justify-center" 
+          style={innerStyle}
+        >
           {images.map((image, index) => {
             const position = getCircularPosition(index, currentIndex, images.length);
             if (Math.abs(position) > 2) return null;
+
+            const imageStyle = use3D ? get3DImageStyle(position) : get2DImageStyle(position);
 
             return (
               <div
                 key={`${image}-${index}`}
                 className="absolute transition-all duration-700 ease-out"
-                style={getImageStyle(position)}
+                style={imageStyle}
               >
                 <img
                   src={image}
                   alt={`Wedding photo ${index + 1}`}
-                  className="max-w-[800px] max-h-[800px] object-contain rounded-lg shadow-2xl"
+                  className="w-auto h-auto max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                  style={{ 
+                    imageRendering: 'high-quality',
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                  }}
                   loading="eager"
                 />
               </div>
@@ -233,6 +280,12 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
           })}
         </div>
       </div>
+      
+      {!use3D && (
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-yellow-500/80 text-white px-4 py-2 rounded-lg text-sm">
+          Chế độ tương thích 2D (TV không hỗ trợ 3D)
+        </div>
+      )}
     </div>
   );
 };
