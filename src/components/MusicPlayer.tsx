@@ -46,10 +46,12 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
   const [currentTrack, setCurrentTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isCaching, setIsCaching] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
   const hasPreloadedRef = useRef(false);
   const hasCachedPlaylistRef = useRef(false);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cache toàn bộ playlist khi component mount
   useEffect(() => {
@@ -135,12 +137,30 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     setIsPlaying(!isPlaying);
   };
 
+  const handleMainButtonClick = () => {
+    // Clear timeout nếu có
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+      // Double click - expand
+      setIsExpanded(true);
+      return;
+    }
+
+    // Single click - toggle play/pause
+    clickTimeoutRef.current = setTimeout(() => {
+      togglePlay();
+      clickTimeoutRef.current = null;
+    }, 300);
+  };
+
   const handleNext = () => {
     setCurrentTrack((prev) => {
       const nextTrack = (prev + 1) % playlist.length;
       return nextTrack;
     });
     setIsPlaying(true);
+    setIsExpanded(false);
   };
 
   const handlePrevious = () => {
@@ -149,12 +169,13 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
       return prevTrack;
     });
     setIsPlaying(true);
+    setIsExpanded(false);
   };
 
   // Hiển thị loading khi đang cache
   if (isCaching) {
     return (
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60]">
+      <div className="fixed top-4 right-4 z-[60]">
         <div className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
         </div>
@@ -171,22 +192,24 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
         loop={false}
       />
 
-      {/* Music Controls - Bottom Center */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3">
-        {/* Previous Button */}
-        <button
-          onClick={handlePrevious}
-          className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110"
-          title="Bài trước"
-        >
-          <ChevronLeft className="h-6 w-6 text-white" />
-        </button>
+      {/* Music Controls - Top Right */}
+      <div className="fixed top-4 right-4 z-[60] flex items-center gap-3">
+        {/* Previous Button - chỉ hiện khi expanded */}
+        {isExpanded && (
+          <button
+            onClick={handlePrevious}
+            className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 animate-in fade-in zoom-in duration-200"
+            title="Bài trước"
+          >
+            <ChevronLeft className="h-6 w-6 text-white" />
+          </button>
+        )}
 
-        {/* Play/Pause Button */}
+        {/* Main Play/Pause Button */}
         <button
-          onClick={togglePlay}
+          onClick={handleMainButtonClick}
           className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110"
-          title={isPlaying ? "Tạm dừng" : "Phát nhạc"}
+          title={isExpanded ? "Click 1 lần: Play/Pause" : "Click 1 lần: Play/Pause | Click 2 lần: Hiện controls"}
         >
           {isPlaying ? (
             <Pause className="h-6 w-6 text-white" />
@@ -195,14 +218,16 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
           )}
         </button>
 
-        {/* Next Button */}
-        <button
-          onClick={handleNext}
-          className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110"
-          title="Bài tiếp theo"
-        >
-          <ChevronRight className="h-6 w-6 text-white" />
-        </button>
+        {/* Next Button - chỉ hiện khi expanded */}
+        {isExpanded && (
+          <button
+            onClick={handleNext}
+            className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 animate-in fade-in zoom-in duration-200"
+            title="Bài tiếp theo"
+          >
+            <ChevronRight className="h-6 w-6 text-white" />
+          </button>
+        )}
       </div>
     </>
   );
