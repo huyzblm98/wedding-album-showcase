@@ -141,7 +141,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-pink-500 mx-auto mb-4"></div>
           <p className="text-gray-700 text-lg font-medium">Đang tải ảnh...</p>
@@ -158,7 +158,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/20 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center overflow-hidden">
       {/* Tim bay */}
       {[...Array(8)].map((_, i) => (
         <FloatingHeart key={i} delay={i * 1.5} />
