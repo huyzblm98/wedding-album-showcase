@@ -131,11 +131,11 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
   // Tối ưu: sử dụng transform thay vì nhiều thuộc tính
   const getImageStyle = (position: number) => {
     const distance = Math.abs(position);
-    const scale = Math.pow(0.5, distance);
-    const translateX = position * 40;
-    const translateZ = -distance * 200;
-    const opacity = distance > 2 ? 0 : 1 - distance * 0.3;
-    const rotateY = position * 15;
+    const scale = position === 0 ? 1 : 0.7; // Ảnh giữa to hơn, 2 bên nhỏ hơn
+    const translateX = position * 55; // Tăng khoảng cách giữa các ảnh
+    const translateZ = position === 0 ? 0 : -300; // Ảnh 2 bên lùi sâu hơn
+    const opacity = distance > 1 ? 0 : 1; // Chỉ hiện 3 ảnh
+    const rotateY = position * 35; // Xoay rõ hơn
 
     return {
       transform: `translateX(${translateX}%) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
@@ -196,7 +196,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
         <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
           {images.map((image, index) => {
             const position = getCircularPosition(index, currentIndex, images.length);
-            if (Math.abs(position) > 2) return null;
+            if (Math.abs(position) > 1) return null; // Chỉ hiện 3 ảnh: giữa và 2 bên
 
             return (
               <div
@@ -220,17 +220,17 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
       <style>{`
         @keyframes floatUp {
           0% {
-            transform: translateY(0) translateX(0) rotate(0deg);
+            transform: translateY(100vh) translateX(0) rotate(0deg) scale(0.5);
             opacity: 0;
           }
-          10% {
-            opacity: 0.7;
+          5% {
+            opacity: 0.8;
           }
-          90% {
-            opacity: 0.7;
+          95% {
+            opacity: 0.8;
           }
           100% {
-            transform: translateY(-100vh) translateX(${Math.random() > 0.5 ? '' : '-'}${20 + Math.random() * 30}px) rotate(${Math.random() * 360}deg);
+            transform: translateY(-20vh) translateX(${Math.random() > 0.5 ? '' : '-'}${30 + Math.random() * 40}px) rotate(${Math.random() * 360}deg) scale(1);
             opacity: 0;
           }
         }
