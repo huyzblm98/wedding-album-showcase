@@ -98,6 +98,69 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     hasPreloadedRef.current = false;
   }, [isPlaying, currentTrack]);
 
+  // Theo dõi và xử lý lỗi phát nhạc
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleError = (e: Event) => {
+      console.error('Audio error:', e);
+      // Thử phát lại
+      setTimeout(() => {
+        if (audio && isPlaying) {
+          audio.load();
+          audio.play().catch(err => {
+            console.error('Retry failed:', err);
+            setIsPlaying(false);
+          });
+        }
+      }, 1000);
+    };
+
+    const handleStalled = () => {
+      console.warn('Audio stalled, reloading...');
+      if (audio && isPlaying) {
+        const currentTime = audio.currentTime;
+        audio.load();
+        audio.currentTime = currentTime;
+        audio.play().catch(err => console.error('Stalled recovery failed:', err));
+      }
+    };
+
+    const handleSuspend = () => {
+      console.warn('Audio suspended');
+      // Thử tiếp tục phát
+      if (audio && isPlaying && audio.paused) {
+        audio.play().catch(err => console.error('Resume failed:', err));
+      }
+    };
+
+    const handleWaiting = () => {
+      console.log('Audio waiting for data...');
+    };
+
+    const handleCanPlay = () => {
+      console.log('Audio can play');
+      if (isPlaying && audio.paused) {
+        audio.play().catch(err => console.error('Auto-resume failed:', err));
+      }
+    };
+
+    audio.addEventListener('error', handleError);
+    audio.addEventListener('stalled', handleStalled);
+    audio.addEventListener('suspend', handleSuspend);
+    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('canplay', handleCanPlay);
+
+    return () => {
+      audio.removeEventListener('error', handleError);
+      audio.removeEventListener('stalled', handleStalled);
+      audio.removeEventListener('suspend', handleSuspend);
+      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('canplay', handleCanPlay);
+    };
+  }, [isPlaying]);
+
   // Preload bài tiếp theo khi đạt 75%
   useEffect(() => {
     const audio = audioRef.current;
@@ -190,6 +253,8 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
         src={getAudioUrl(playlist[currentTrack]?.src)}
         onEnded={handleNext}
         loop={false}
+        preload="auto"
+        crossOrigin="anonymous"
       />
 
       {/* Music Controls - Top Right */}
