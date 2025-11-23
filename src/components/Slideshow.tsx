@@ -6,9 +6,18 @@ interface SlideshowProps {
   onClose: () => void;
 }
 
+interface Heart {
+  id: number;
+  x: number;
+  y: number;
+  scale: number;
+  opacity: number;
+  speed: number;
+}
+
 // Cache ảnh với memory management
 const imageCache = new Map<string, HTMLImageElement>();
-const CACHE_LIMIT = 20; // Giới hạn cache để tránh memory leak
+const CACHE_LIMIT = 20;
 
 const addToCache = (src: string, img: HTMLImageElement) => {
   if (imageCache.size >= CACHE_LIMIT) {
@@ -23,11 +32,79 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [hearts, setHearts] = useState<Heart[]>([]);
+
+  // Khởi tạo trái tim
+  useEffect(() => {
+    const initialHearts: Heart[] = Array.from({ length: 8 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: 100 + Math.random() * 50, // Bắt đầu từ dưới màn hình
+      scale: 0.3 + Math.random() * 0.4,
+      opacity: 0.3 + Math.random() * 0.4,
+      speed: 0.5 + Math.random() * 0.8,
+    }));
+    setHearts(initialHearts);
+  }, []);
+
+  // Animation cho trái tim với requestAnimationFrame
+  useEffect(() => {
+    if (isLoading) return;
+
+    let animationFrameId: number;
+    let lastTime = 0;
+
+    const animateHearts = (time: number) => {
+      if (!lastTime) lastTime = time;
+      const delta = time - lastTime;
+
+      if (delta > 16) { // ~60fps
+        setHearts(prevHearts => 
+          prevHearts.map(heart => {
+            let newY = heart.y - heart.speed;
+            let newOpacity = heart.opacity;
+            
+            // Reset heart khi bay ra khỏi màn hình
+            if (newY < -20) {
+              return {
+                ...heart,
+                x: Math.random() * 100,
+                y: 100 + Math.random() * 50,
+                opacity: 0.3 + Math.random() * 0.4,
+                scale: 0.3 + Math.random() * 0.4,
+              };
+            }
+
+            // Giảm opacity khi gần đỉnh
+            if (newY < 30) {
+              newOpacity = heart.opacity * 0.95;
+            }
+
+            return {
+              ...heart,
+              y: newY,
+              opacity: newOpacity,
+            };
+          })
+        );
+        lastTime = time;
+      }
+
+      animationFrameId = requestAnimationFrame(animateHearts);
+    };
+
+    animationFrameId = requestAnimationFrame(animateHearts);
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isLoading]);
 
   // Preload ảnh với tối ưu hóa cho TV
   useEffect(() => {
     let mounted = true;
-    let animationFrameId: number;
 
     const loadImagesOptimized = async () => {
       if (!mounted) return;
@@ -81,7 +158,6 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
           img.src = src;
         });
 
-        // Thêm delay nhỏ để tránh block UI
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
@@ -113,19 +189,16 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
 
     return () => {
       mounted = false;
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
     };
   }, [images, currentIndex]);
 
-  // Slideshow auto-play với requestAnimationFrame
+  // Slideshow auto-play
   useEffect(() => {
     if (isLoading) return;
 
     let mounted = true;
     let lastTime = 0;
-    const interval = 4000; // 4 seconds
+    const interval = 4000;
 
     const animate = (time: number) => {
       if (!mounted) return;
@@ -149,7 +222,6 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     };
   }, [images.length, isLoading]);
 
-  // Memoize các hàm tính toán để tránh re-render không cần thiết
   const getCircularPosition = useCallback((index: number, current: number, total: number) => {
     let position = index - current;
     if (position > total / 2) {
@@ -175,7 +247,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     };
   }, []);
 
-  // Preload ảnh tiếp theo khi currentIndex thay đổi
+  // Preload ảnh tiếp theo
   useEffect(() => {
     if (isLoading) return;
 
@@ -189,7 +261,6 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     }
   }, [currentIndex, images, isLoading, loadedImages]);
 
-  // Hiển thị loading screen
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center">
@@ -210,6 +281,33 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center overflow-hidden">
+      {/* Các trái tim bay */}
+      {hearts.map(heart => (
+        <div
+          key={heart.id}
+          className="absolute pointer-events-none"
+          style={{
+            left: `${heart.x}%`,
+            top: `${heart.y}%`,
+            opacity: heart.opacity,
+            transform: `scale(${heart.scale})`,
+            transition: 'transform 0.1s linear, opacity 0.1s linear',
+            zIndex: 1,
+          }}
+        >
+          <svg 
+            width="24" 
+            height="24" 
+            viewBox="0 0 24 24" 
+            fill="red" 
+            stroke="red" 
+            strokeWidth="2"
+          >
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </div>
+      ))}
+
       <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: '2000px' }}>
         <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
           {images.map((image, index) => {
