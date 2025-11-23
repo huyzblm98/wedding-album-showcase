@@ -109,7 +109,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
-    }, 4000);
+    }, 5000); // Tăng từ 4s lên 5s để giảm tần suất chuyển ảnh
 
     return () => clearInterval(interval);
   }, [images.length, isLoading]);
@@ -159,9 +159,9 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center overflow-hidden">
-      {/* Tim bay */}
-      {[...Array(8)].map((_, i) => (
-        <FloatingHeart key={i} delay={i * 1.5} />
+      {/* Tim bay - giảm số lượng từ 8 xuống 5 */}
+      {[...Array(5)].map((_, i) => (
+        <FloatingHeart key={i} delay={i * 2} />
       ))}
       
       <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: '2000px' }}>
@@ -173,13 +173,15 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
             return (
               <div
                 key={index}
-                className="absolute transition-all duration-700 ease-out"
+                className="absolute transition-all duration-700 ease-out will-change-transform"
                 style={getImageStyle(position)}
               >
                 <img
                   src={image}
                   alt={`Wedding photo ${index + 1}`}
                   className="max-w-[800px] max-h-[800px] object-contain rounded-lg shadow-2xl"
+                  loading="eager"
+                  decoding="sync"
                 />
               </div>
             );
@@ -207,6 +209,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
         
         .animate-float-up {
           animation: float-up 5s ease-in-out infinite;
+          will-change: transform, opacity;
         }
       `}</style>
     </div>
