@@ -48,8 +48,6 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
   const [isCaching, setIsCaching] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
-  const hasPreloadedRef = useRef(false);
   const hasCachedPlaylistRef = useRef(false);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -68,7 +66,7 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
   // Preload tất cả bài còn lại khi bắt đầu phát
   useEffect(() => {
     if (isPlaying && !isCaching) {
-      // Background preload các bài chưa cache
+      // Background preload các bài chưa cache (nếu có)
       playlist.forEach((track) => {
         if (!audioCache.has(track.src)) {
           fetch(track.src)
@@ -77,124 +75,13 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
               audioCache.set(track.src, blob);
               const objectUrl = URL.createObjectURL(blob);
               audioCacheUrls.set(track.src, objectUrl);
+              console.log(`🎵 Background cached: ${track.title}`);
             })
             .catch(err => console.error('Preload error:', err));
         }
       });
     }
   }, [isPlaying, isCaching, playlist]);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.loop = false;
-      if (isPlaying) {
-        audioRef.current.play().catch(() => {
-          setIsPlaying(false);
-        });
-      } else {
-        audioRef.current.pause();
-      }
-    }
-    hasPreloadedRef.current = false;
-  }, [isPlaying, currentTrack]);
-
-  // Theo dõi và xử lý lỗi phát nhạc
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleError = (e: Event) => {
-      console.error('Audio error:', e);
-      // Thử phát lại
-      setTimeout(() => {
-        if (audio && isPlaying) {
-          audio.load();
-          audio.play().catch(err => {
-            console.error('Retry failed:', err);
-            setIsPlaying(false);
-          });
-        }
-      }, 1000);
-    };
-
-    const handleStalled = () => {
-      console.warn('Audio stalled, reloading...');
-      if (audio && isPlaying) {
-        const currentTime = audio.currentTime;
-        audio.load();
-        audio.currentTime = currentTime;
-        audio.play().catch(err => console.error('Stalled recovery failed:', err));
-      }
-    };
-
-    const handleSuspend = () => {
-      console.warn('Audio suspended');
-      // Thử tiếp tục phát
-      if (audio && isPlaying && audio.paused) {
-        audio.play().catch(err => console.error('Resume failed:', err));
-      }
-    };
-
-    const handleWaiting = () => {
-      console.log('Audio waiting for data...');
-    };
-
-    const handleCanPlay = () => {
-      console.log('Audio can play');
-      if (isPlaying && audio.paused) {
-        audio.play().catch(err => console.error('Auto-resume failed:', err));
-      }
-    };
-
-    audio.addEventListener('error', handleError);
-    audio.addEventListener('stalled', handleStalled);
-    audio.addEventListener('suspend', handleSuspend);
-    audio.addEventListener('waiting', handleWaiting);
-    audio.addEventListener('canplay', handleCanPlay);
-
-    return () => {
-      audio.removeEventListener('error', handleError);
-      audio.removeEventListener('stalled', handleStalled);
-      audio.removeEventListener('suspend', handleSuspend);
-      audio.removeEventListener('waiting', handleWaiting);
-      audio.removeEventListener('canplay', handleCanPlay);
-    };
-  }, [isPlaying]);
-
-  // Preload bài tiếp theo khi đạt 75%
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleTimeUpdate = () => {
-      const progress = audio.currentTime / audio.duration;
-      
-      if (progress >= 0.75 && !hasPreloadedRef.current) {
-        hasPreloadedRef.current = true;
-        
-        const nextTrackIndex = (currentTrack + 1) % playlist.length;
-        const nextTrackSrc = playlist[nextTrackIndex]?.src;
-        
-        if (nextTrackSrc) {
-          // Sử dụng URL từ cache nếu có
-          const cachedUrl = getAudioUrl(nextTrackSrc);
-          preloadAudioRef.current = new Audio(cachedUrl);
-          preloadAudioRef.current.preload = 'auto';
-          preloadAudioRef.current.load();
-        }
-      }
-    };
-
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    
-    return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      if (preloadAudioRef.current) {
-        preloadAudioRef.current.pause();
-        preloadAudioRef.current = null;
-      }
-    };
-  }, [currentTrack, playlist]);
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
