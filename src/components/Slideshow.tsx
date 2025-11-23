@@ -131,11 +131,11 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
   // Tối ưu: sử dụng transform thay vì nhiều thuộc tính
   const getImageStyle = (position: number) => {
     const distance = Math.abs(position);
-    const scale = position === 0 ? 1 : 0.7; // Ảnh giữa to hơn, 2 bên nhỏ hơn
-    const translateX = position * 55; // Tăng khoảng cách giữa các ảnh
-    const translateZ = position === 0 ? 0 : -300; // Ảnh 2 bên lùi sâu hơn
-    const opacity = distance > 1 ? 0 : 1; // Chỉ hiện 3 ảnh
-    const rotateY = position * 35; // Xoay rõ hơn
+    const scale = position === 0 ? 1 : (distance === 1 ? 0.75 : 0.6); // Ảnh giữa to nhất, xa dần nhỏ dần
+    const translateX = position * 45; // Khoảng cách vừa phải
+    const translateZ = position === 0 ? 0 : (distance === 1 ? -250 : -400); // Ảnh xa lùi sâu hơn
+    const opacity = distance > 2 ? 0 : (distance === 2 ? 0.6 : 1); // Ảnh xa nhất mờ hơn
+    const rotateY = position * 30; // Xoay vừa phải
 
     return {
       transform: `translateX(${translateX}%) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
@@ -196,7 +196,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
         <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
           {images.map((image, index) => {
             const position = getCircularPosition(index, currentIndex, images.length);
-            if (Math.abs(position) > 1) return null; // Chỉ hiện 3 ảnh: giữa và 2 bên
+            if (Math.abs(position) > 2) return null; // Hiện 5 ảnh: 1 giữa + 2 bên trái + 2 bên phải
 
             return (
               <div
