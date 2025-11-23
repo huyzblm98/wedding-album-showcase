@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface SlideshowProps {
   images: string[];
@@ -6,99 +6,151 @@ interface SlideshowProps {
   onClose: () => void;
 }
 
-// Cache ảnh ở ngoài component để giữ lại giữa các lần render
+// Cache ảnh với memory management
 const imageCache = new Map<string, HTMLImageElement>();
-let isPreloading = false;
-let preloadPromise: Promise<void> | null = null;
+const CACHE_LIMIT = 20; // Giới hạn cache để tránh memory leak
 
-const preloadAllImages = (images: string[]): Promise<void> => {
-  // Nếu đang preload hoặc đã preload xong, return promise hiện tại
-  if (preloadPromise) return preloadPromise;
-  
-  if (isPreloading) return Promise.resolve();
-  
-  isPreloading = true;
-  
-  preloadPromise = Promise.all(
-    images.map(src => {
-      // Nếu ảnh đã có trong cache, skip
-      if (imageCache.has(src)) {
-        return Promise.resolve();
-      }
-      
-      return new Promise<void>((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          imageCache.set(src, img);
-          resolve();
-        };
-        img.onerror = () => {
-          console.warn(`Failed to load image: ${src}`);
-          resolve(); // Vẫn resolve để không block các ảnh khác
-        };
-        img.src = src;
-      });
-    })
-  ).then(() => {
-    isPreloading = false;
-  });
-  
-  return preloadPromise;
+const addToCache = (src: string, img: HTMLImageElement) => {
+  if (imageCache.size >= CACHE_LIMIT) {
+    const firstKey = imageCache.keys().next().value;
+    imageCache.delete(firstKey);
+  }
+  imageCache.set(src, img);
 };
 
 const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
+  const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
 
-  // Preload tất cả ảnh khi component mount
+  // Preload ảnh với tối ưu hóa cho TV
   useEffect(() => {
-    let loadedCount = 0;
-    
-    const loadWithProgress = async () => {
-      await Promise.all(
-        images.map(src => {
-          if (imageCache.has(src)) {
-            loadedCount++;
-            setLoadProgress((loadedCount / images.length) * 100);
-            return Promise.resolve();
-          }
-          
-          return new Promise<void>((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-              imageCache.set(src, img);
-              loadedCount++;
-              setLoadProgress((loadedCount / images.length) * 100);
-              resolve();
-            };
-            img.onerror = () => {
-              loadedCount++;
-              setLoadProgress((loadedCount / images.length) * 100);
-              resolve();
-            };
-            img.src = src;
-          });
-        })
-      );
-      
-      setIsLoading(false);
-    };
-    
-    loadWithProgress();
-  }, [images]);
+    let mounted = true;
+    let animationFrameId: number;
 
+    const loadImagesOptimized = async () => {
+      if (!mounted) return;
+
+      const total = images.length;
+      let loadedCount = 0;
+
+      const updateProgress = () => {
+        if (!mounted) return;
+        setLoadProgress((loadedCount / total) * 100);
+      };
+
+      // Load ảnh hiện tại và 2 ảnh kế tiếp trước
+      const priorityIndices = [
+        currentIndex,
+        (currentIndex + 1) % total,
+        (currentIndex + 2) % total,
+        (currentIndex - 1 + total) % total,
+        (currentIndex - 2 + total) % total,
+      ];
+
+      // Load ảnh ưu tiên trước
+      for (const index of priorityIndices) {
+        if (!mounted) break;
+        
+        const src = images[index];
+        if (loadedImages.has(src) || imageCache.has(src)) {
+          loadedCount++;
+          updateProgress();
+          continue;
+        }
+
+        await new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            if (mounted) {
+              addToCache(src, img);
+              setLoadedImages(prev => new Set(prev).add(src));
+              loadedCount++;
+              updateProgress();
+            }
+            resolve();
+          };
+          img.onerror = () => {
+            if (mounted) {
+              loadedCount++;
+              updateProgress();
+            }
+            resolve();
+          };
+          img.src = src;
+        });
+
+        // Thêm delay nhỏ để tránh block UI
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      // Load các ảnh còn lại trong background
+      if (mounted) {
+        for (let i = 0; i < total; i++) {
+          if (!mounted) break;
+          
+          const src = images[i];
+          if (loadedImages.has(src) || imageCache.has(src)) continue;
+
+          const img = new Image();
+          img.onload = () => {
+            if (mounted) {
+              addToCache(src, img);
+              setLoadedImages(prev => new Set(prev).add(src));
+            }
+          };
+          img.src = src;
+        }
+      }
+
+      if (mounted && loadedCount > 0) {
+        setIsLoading(false);
+      }
+    };
+
+    loadImagesOptimized();
+
+    return () => {
+      mounted = false;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [images, currentIndex]);
+
+  // Slideshow auto-play với requestAnimationFrame
   useEffect(() => {
     if (isLoading) return;
-    
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % images.length);
-    }, 4000);
 
-    return () => clearInterval(interval);
+    let mounted = true;
+    let lastTime = 0;
+    const interval = 4000; // 4 seconds
+
+    const animate = (time: number) => {
+      if (!mounted) return;
+
+      if (!lastTime) lastTime = time;
+      const delta = time - lastTime;
+
+      if (delta >= interval) {
+        setCurrentIndex(prev => (prev + 1) % images.length);
+        lastTime = time;
+      }
+
+      requestAnimationFrame(animate);
+    };
+
+    const animationId = requestAnimationFrame(animate);
+
+    return () => {
+      mounted = false;
+      cancelAnimationFrame(animationId);
+    };
   }, [images.length, isLoading]);
 
-  const getCircularPosition = (index: number, current: number, total: number) => {
+  // Memoize các hàm tính toán để tránh re-render không cần thiết
+  const getCircularPosition = useCallback((index: number, current: number, total: number) => {
     let position = index - current;
     if (position > total / 2) {
       position -= total;
@@ -106,9 +158,9 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
       position += total;
     }
     return position;
-  };
+  }, []);
 
-  const getImageStyle = (position: number) => {
+  const getImageStyle = useCallback((position: number) => {
     const distance = Math.abs(position);
     const scale = Math.pow(0.5, distance);
     const translateX = position * 40;
@@ -121,7 +173,21 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
       opacity,
       zIndex: 10 - distance,
     };
-  };
+  }, []);
+
+  // Preload ảnh tiếp theo khi currentIndex thay đổi
+  useEffect(() => {
+    if (isLoading) return;
+
+    const nextIndex = (currentIndex + 1) % images.length;
+    const nextSrc = images[nextIndex];
+
+    if (!loadedImages.has(nextSrc) && !imageCache.has(nextSrc)) {
+      const img = new Image();
+      img.onload = () => addToCache(nextSrc, img);
+      img.src = nextSrc;
+    }
+  }, [currentIndex, images, isLoading, loadedImages]);
 
   // Hiển thị loading screen
   if (isLoading) {
@@ -152,7 +218,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
 
             return (
               <div
-                key={index}
+                key={`${image}-${index}`}
                 className="absolute transition-all duration-700 ease-out"
                 style={getImageStyle(position)}
               >
@@ -160,6 +226,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
                   src={image}
                   alt={`Wedding photo ${index + 1}`}
                   className="max-w-[800px] max-h-[800px] object-contain rounded-lg shadow-2xl"
+                  loading="eager"
                 />
               </div>
             );
