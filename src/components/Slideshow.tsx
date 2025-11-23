@@ -139,37 +139,6 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     };
   };
 
-  const getImageClipPath = (position: number) => {
-    const distance = Math.abs(position);
-    
-    // Ảnh chính (giữa): hiện 100%
-    if (distance === 0) {
-      return 'inset(0% 0% 0% 0%)';
-    }
-    
-    // Ảnh sát bên: chỉ hiện 50%
-    if (distance === 1) {
-      if (position > 0) {
-        // Ảnh bên phải: che 50% bên phải
-        return 'inset(0% 50% 0% 0%)';
-      } else {
-        // Ảnh bên trái: che 50% bên trái
-        return 'inset(0% 0% 0% 50%)';
-      }
-    }
-    
-    // Ảnh xa hơn: hiện ít hơn
-    if (distance === 2) {
-      if (position > 0) {
-        return 'inset(0% 70% 0% 0%)';
-      } else {
-        return 'inset(0% 0% 0% 70%)';
-      }
-    }
-    
-    return 'inset(0% 100% 0% 0%)';
-  };
-
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center">
@@ -211,9 +180,6 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
                   src={image}
                   alt={`Wedding photo ${index + 1}`}
                   className="max-w-[800px] max-h-[800px] object-contain rounded-lg shadow-2xl"
-                  style={{
-                    clipPath: getImageClipPath(position),
-                  }}
                 />
               </div>
             );
