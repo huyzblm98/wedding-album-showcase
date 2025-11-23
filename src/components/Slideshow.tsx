@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Heart } from "lucide-react";
 
 interface SlideshowProps {
   images: string[];
@@ -13,13 +12,16 @@ let isPreloading = false;
 let preloadPromise: Promise<void> | null = null;
 
 const preloadAllImages = (images: string[]): Promise<void> => {
+  // Nếu đang preload hoặc đã preload xong, return promise hiện tại
   if (preloadPromise) return preloadPromise;
+  
   if (isPreloading) return Promise.resolve();
   
   isPreloading = true;
   
   preloadPromise = Promise.all(
     images.map(src => {
+      // Nếu ảnh đã có trong cache, skip
       if (imageCache.has(src)) {
         return Promise.resolve();
       }
@@ -32,7 +34,7 @@ const preloadAllImages = (images: string[]): Promise<void> => {
         };
         img.onerror = () => {
           console.warn(`Failed to load image: ${src}`);
-          resolve();
+          resolve(); // Vẫn resolve để không block các ảnh khác
         };
         img.src = src;
       });
@@ -44,30 +46,12 @@ const preloadAllImages = (images: string[]): Promise<void> => {
   return preloadPromise;
 };
 
-// Component tim bay
-const FloatingHeart = ({ delay }: { delay: number }) => {
-  const randomLeft = Math.random() * 100;
-  const randomDuration = 3 + Math.random() * 2;
-  
-  return (
-    <div
-      className="absolute bottom-0 animate-float-up"
-      style={{
-        left: `${randomLeft}%`,
-        animationDelay: `${delay}s`,
-        animationDuration: `${randomDuration}s`,
-      }}
-    >
-      <Heart className="text-red-500 fill-red-500" size={24 + Math.random() * 16} />
-    </div>
-  );
-};
-
 const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
 
+  // Preload tất cả ảnh khi component mount
   useEffect(() => {
     let loadedCount = 0;
     
@@ -109,7 +93,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % images.length);
-    }, 5000); // Tăng từ 4s lên 5s để giảm tần suất chuyển ảnh
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [images.length, isLoading]);
@@ -139,6 +123,7 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
     };
   };
 
+  // Hiển thị loading screen
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center">
@@ -159,11 +144,6 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-gradient-to-br from-pink-200/40 via-purple-200/30 to-blue-200/40 flex items-center justify-center overflow-hidden">
-      {/* Tim bay - giảm số lượng từ 8 xuống 5 */}
-      {[...Array(5)].map((_, i) => (
-        <FloatingHeart key={i} delay={i * 2} />
-      ))}
-      
       <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: '2000px' }}>
         <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: 'preserve-3d' }}>
           {images.map((image, index) => {
@@ -173,45 +153,19 @@ const Slideshow = ({ images, initialIndex }: SlideshowProps) => {
             return (
               <div
                 key={index}
-                className="absolute transition-all duration-700 ease-out will-change-transform"
+                className="absolute transition-all duration-700 ease-out"
                 style={getImageStyle(position)}
               >
                 <img
                   src={image}
                   alt={`Wedding photo ${index + 1}`}
                   className="max-w-[800px] max-h-[800px] object-contain rounded-lg shadow-2xl"
-                  loading="eager"
-                  decoding="sync"
                 />
               </div>
             );
           })}
         </div>
       </div>
-      
-      <style>{`
-        @keyframes float-up {
-          0% {
-            transform: translateY(0) scale(0.5) rotate(0deg);
-            opacity: 0;
-          }
-          10% {
-            opacity: 1;
-          }
-          90% {
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(-100vh) scale(1.2) rotate(360deg);
-            opacity: 0;
-          }
-        }
-        
-        .animate-float-up {
-          animation: float-up 5s ease-in-out infinite;
-          will-change: transform, opacity;
-        }
-      `}</style>
     </div>
   );
 };
