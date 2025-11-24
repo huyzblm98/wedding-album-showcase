@@ -17,7 +17,7 @@ const addToCache = (src, img) => {
   imageCache.set(src, img);
 };
 
-const Slideshow = ({ images, initialIndex }) => {
+const Slideshow = ({ images, initialIndex, onClose }: SlideshowProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -69,7 +69,7 @@ const Slideshow = ({ images, initialIndex }) => {
           continue;
         }
 
-        await new Promise((resolve) => {
+        await new Promise<void>((resolve) => {
           const img = new Image();
           img.onload = () => {
             if (mounted) {
@@ -236,10 +236,10 @@ const Slideshow = ({ images, initialIndex }) => {
     MozPerspective: '2500px',
   } : {};
 
-  const innerStyle = use3D ? {
+  const innerStyle: React.CSSProperties = use3D ? {
     transformStyle: 'preserve-3d',
-    WebkitTransformStyle: 'preserve-3d',
-    MozTransformStyle: 'preserve-3d',
+    WebkitTransformStyle: 'preserve-3d' as any,
+    MozTransformStyle: 'preserve-3d' as any,
   } : {};
 
   return (
@@ -269,7 +269,6 @@ const Slideshow = ({ images, initialIndex }) => {
                   alt={`Wedding photo ${index + 1}`}
                   className="w-auto h-auto max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
                   style={{ 
-                    imageRendering: 'high-quality',
                     backfaceVisibility: 'hidden',
                     WebkitBackfaceVisibility: 'hidden',
                   }}

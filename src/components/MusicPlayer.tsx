@@ -1,245 +1,170 @@
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Pause } from "lucide-react";
 
 interface MusicPlayerProps {
   playlist: { title: string; src: string }[];
-  globalClickToggle?: boolean;
 }
 
-const audioCache = new Map();
-const audioCacheUrls = new Map();
+const audioCache = new Map<string, Blob>();
+const audioCacheUrls = new Map<string, string>();
 
-const preloadPlaylist = async (playlist) => {
-  const promises = playlist.map(async (track) => {
-    if (audioCache.has(track.src)) {
-      return;
-    }
+const preloadNextTrack = async (track: { title: string; src: string }) => {
+  if (audioCache.has(track.src)) {
+    return;
+  }
 
-    try {
-      const response = await fetch(track.src);
-      const blob = await response.blob();
-      
-      audioCache.set(track.src, blob);
-      const objectUrl = URL.createObjectURL(blob);
-      audioCacheUrls.set(track.src, objectUrl);
-      
-      console.log(`✅ Cached: ${track.title}`);
-    } catch (error) {
-      console.error(`❌ Failed to cache: ${track.title}`, error);
-    }
-  });
-
-  await Promise.all(promises);
+  try {
+    const response = await fetch(track.src);
+    const blob = await response.blob();
+    
+    audioCache.set(track.src, blob);
+    const objectUrl = URL.createObjectURL(blob);
+    audioCacheUrls.set(track.src, objectUrl);
+    
+    console.log(`✅ Cached next: ${track.title}`);
+  } catch (error) {
+    console.error(`❌ Failed to cache: ${track.title}`, error);
+  }
 };
 
-const getAudioUrl = (src) => {
+const freePreviousTrack = (src: string) => {
+  const objectUrl = audioCacheUrls.get(src);
+  if (objectUrl) {
+    URL.revokeObjectURL(objectUrl);
+  }
+  audioCache.delete(src);
+  audioCacheUrls.delete(src);
+  console.log(`🗑️ Freed cache: ${src}`);
+};
+
+const getAudioUrl = (src: string) => {
   return audioCacheUrls.get(src) || src;
 };
 
-const MusicPlayer = ({ playlist, globalClickToggle = true }) => {
+const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
   const [currentTrack, setCurrentTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isCaching, setIsCaching] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const audioRef = useRef(null);
-  const hasCachedPlaylistRef = useRef(false);
-  const clickTimeoutRef = useRef(null);
-  const touchHandledRef = useRef(false);
-  const buttonRefs = useRef(new Set());
+  const [retryCount, setRetryCount] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const hasAutoPlayedRef = useRef(false);
 
+  // Auto-play on mount
   useEffect(() => {
-    if (!hasCachedPlaylistRef.current) {
-      hasCachedPlaylistRef.current = true;
+    if (!hasAutoPlayedRef.current && audioRef.current) {
+      hasAutoPlayedRef.current = true;
       
-      preloadPlaylist(playlist).then(() => {
-        setIsCaching(false);
-        console.log('🎵 Playlist đã được cache!');
+      // Preload first track
+      preloadNextTrack(playlist[0]).then(() => {
+        // Try to autoplay
+        const playPromise = audioRef.current?.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsPlaying(true);
+              console.log('🎵 Auto-play started');
+              // Preload next track
+              const nextIndex = (0 + 1) % playlist.length;
+              preloadNextTrack(playlist[nextIndex]);
+            })
+            .catch((error) => {
+              console.log('⚠️ Auto-play blocked, waiting for user interaction', error);
+              setIsPlaying(false);
+            });
+        }
       });
     }
   }, [playlist]);
 
+  // Preload next track when current track changes
   useEffect(() => {
-    if (isPlaying && !isCaching) {
-      playlist.forEach((track) => {
-        if (!audioCache.has(track.src)) {
-          fetch(track.src)
-            .then(res => res.blob())
-            .then(blob => {
-              audioCache.set(track.src, blob);
-              const objectUrl = URL.createObjectURL(blob);
-              audioCacheUrls.set(track.src, objectUrl);
-              console.log(`🎵 Background cached: ${track.title}`);
-            })
-            .catch(err => console.error('Preload error:', err));
-        }
-      });
+    const nextIndex = (currentTrack + 1) % playlist.length;
+    const prevIndex = (currentTrack - 1 + playlist.length) % playlist.length;
+    
+    // Preload next
+    preloadNextTrack(playlist[nextIndex]);
+    
+    // Free previous (but keep current and next)
+    if (currentTrack > 1) {
+      const twoTracksAgo = (currentTrack - 2 + playlist.length) % playlist.length;
+      freePreviousTrack(playlist[twoTracksAgo].src);
     }
-  }, [isPlaying, isCaching, playlist]);
+  }, [currentTrack, playlist]);
 
+  // Handle play/pause
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.loop = false;
       if (isPlaying) {
-        audioRef.current.play().catch(() => {
-          setIsPlaying(false);
-        });
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            console.error('Play error:', error);
+            setIsPlaying(false);
+            // Retry after 1 second
+            setTimeout(() => {
+              if (audioRef.current && retryCount < 3) {
+                setRetryCount(prev => prev + 1);
+                audioRef.current.play()
+                  .then(() => {
+                    setIsPlaying(true);
+                    setRetryCount(0);
+                  })
+                  .catch(() => console.error('Retry failed'));
+              }
+            }, 1000);
+          });
+        }
       } else {
         audioRef.current.pause();
       }
     }
-  }, [isPlaying, currentTrack]);
+  }, [isPlaying, currentTrack, retryCount]);
 
+  // Error handling with retry
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleError = (e) => {
+    const handleError = (e: Event) => {
       console.error('❌ Audio error:', e);
       setIsPlaying(false);
+      
+      // Auto retry
+      if (retryCount < 3) {
+        console.log(`🔄 Retrying... (${retryCount + 1}/3)`);
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          audio.play()
+            .then(() => {
+              setIsPlaying(true);
+              setRetryCount(0);
+            })
+            .catch(() => console.error('Retry failed'));
+        }, 2000);
+      }
     };
 
-    const handleStalled = () => {
-      console.warn('⚠️ Audio stalled - buffering...');
-    };
-
-    const handleWaiting = () => {
-      console.log('⏳ Audio waiting for data...');
+    const handleCanPlay = () => {
+      console.log('✅ Audio ready to play');
     };
 
     audio.addEventListener('error', handleError);
-    audio.addEventListener('stalled', handleStalled);
-    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('canplay', handleCanPlay);
 
     return () => {
       audio.removeEventListener('error', handleError);
-      audio.removeEventListener('stalled', handleStalled);
-      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('canplay', handleCanPlay);
     };
-  }, []);
-
-  // Global click/touch toggle
-  useEffect(() => {
-    if (!globalClickToggle || isCaching) return;
-
-    const handleGlobalClick = (e) => {
-      // Kiểm tra xem có phải click vào button không
-      let isButtonClick = false;
-      buttonRefs.current.forEach(ref => {
-        if (ref && ref.contains(e.target)) {
-          isButtonClick = true;
-        }
-      });
-
-      // Nếu click vào button, để button xử lý
-      if (isButtonClick) return;
-
-      // Click ở nơi khác → toggle play/pause
-      setIsPlaying(prev => !prev);
-    };
-
-    const handleGlobalTouch = (e) => {
-      // Kiểm tra xem có phải touch vào button không
-      let isButtonTouch = false;
-      buttonRefs.current.forEach(ref => {
-        if (ref && ref.contains(e.target)) {
-          isButtonTouch = true;
-        }
-      });
-
-      if (isButtonTouch) return;
-
-      setIsPlaying(prev => !prev);
-    };
-
-    document.addEventListener('click', handleGlobalClick);
-    document.addEventListener('touchend', handleGlobalTouch);
-
-    return () => {
-      document.removeEventListener('click', handleGlobalClick);
-      document.removeEventListener('touchend', handleGlobalTouch);
-    };
-  }, [globalClickToggle, isCaching]);
+  }, [retryCount]);
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
   };
 
-  // Handle both touch and click for Smart TV compatibility
-  const handleMainButtonTouch = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    touchHandledRef.current = true;
-    
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-      setIsExpanded(true);
-      return;
-    }
-
-    clickTimeoutRef.current = setTimeout(() => {
-      togglePlay();
-      clickTimeoutRef.current = null;
-    }, 300);
-  };
-
-  const handleMainButtonClick = (e) => {
-    e.stopPropagation();
-    
-    // Prevent double-firing on touch devices
-    if (touchHandledRef.current) {
-      touchHandledRef.current = false;
-      return;
-    }
-    
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-      setIsExpanded(true);
-      return;
-    }
-
-    clickTimeoutRef.current = setTimeout(() => {
-      togglePlay();
-      clickTimeoutRef.current = null;
-    }, 300);
-  };
-
-  const handleNext = (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    setCurrentTrack((prev) => {
-      const nextTrack = (prev + 1) % playlist.length;
-      return nextTrack;
-    });
+  const handleNext = () => {
+    setCurrentTrack((prev) => (prev + 1) % playlist.length);
     setIsPlaying(true);
-    setIsExpanded(false);
   };
-
-  const handlePrevious = (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    setCurrentTrack((prev) => {
-      const prevTrack = (prev - 1 + playlist.length) % playlist.length;
-      return prevTrack;
-    });
-    setIsPlaying(true);
-    setIsExpanded(false);
-  };
-
-  if (isCaching) {
-    return (
-      <div className="fixed top-4 right-4 z-[60]">
-        <div className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -249,68 +174,26 @@ const MusicPlayer = ({ playlist, globalClickToggle = true }) => {
         onEnded={handleNext}
         loop={false}
         preload="auto"
-        crossOrigin="anonymous"
       />
 
-      {/* Thông báo global click */}
-      {globalClickToggle && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] pointer-events-none">
-          <div className="bg-black/50 text-white px-4 py-2 rounded-full text-sm backdrop-blur-sm">
-            💡 Click ở đâu cũng được để {isPlaying ? 'tắt' : 'bật'} nhạc
-          </div>
+      <button
+        onClick={togglePlay}
+        className="fixed top-4 right-4 z-[60] h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110"
+        title={isPlaying ? "Tạm dừng" : "Phát nhạc"}
+        style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
+      >
+        {isPlaying ? (
+          <Pause className="h-6 w-6 text-white" />
+        ) : (
+          <Play className="h-6 w-6 text-white ml-0.5" />
+        )}
+      </button>
+
+      {retryCount > 0 && (
+        <div className="fixed bottom-4 right-4 z-[60] bg-yellow-500/90 text-white px-4 py-2 rounded-lg text-sm backdrop-blur-sm">
+          🔄 Đang thử lại... ({retryCount}/3)
         </div>
       )}
-
-      <div className="fixed top-4 right-4 z-[60] flex items-center gap-3">
-        {isExpanded && (
-          <button
-            ref={(el) => el && buttonRefs.current.add(el)}
-            onClick={handlePrevious}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handlePrevious(e);
-            }}
-            className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 animate-in fade-in zoom-in duration-200 cursor-pointer"
-            title="Bài trước"
-            style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
-          >
-            <ChevronLeft className="h-6 w-6 text-white" />
-          </button>
-        )}
-
-        <button
-          ref={(el) => el && buttonRefs.current.add(el)}
-          onClick={handleMainButtonClick}
-          onTouchStart={handleMainButtonTouch}
-          className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 cursor-pointer"
-          title={isExpanded ? "Click 1 lần: Play/Pause" : "Click 1 lần: Play/Pause | Click 2 lần: Hiện controls"}
-          style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
-        >
-          {isPlaying ? (
-            <Pause className="h-6 w-6 text-white" />
-          ) : (
-            <Play className="h-6 w-6 text-white ml-0.5" />
-          )}
-        </button>
-
-        {isExpanded && (
-          <button
-            ref={(el) => el && buttonRefs.current.add(el)}
-            onClick={handleNext}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleNext(e);
-            }}
-            className="h-12 w-12 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110 animate-in fade-in zoom-in duration-200 cursor-pointer"
-            title="Bài tiếp theo"
-            style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
-          >
-            <ChevronRight className="h-6 w-6 text-white" />
-          </button>
-        )}
-      </div>
     </>
   );
 };
