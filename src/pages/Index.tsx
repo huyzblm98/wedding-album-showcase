@@ -57,16 +57,28 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/images/background/background_damngo.png)' }}>
-      {showSlideshow && (
-        <Slideshow
-          images={WEDDING_IMAGES}
-          initialIndex={slideshowIndex}
-          onClose={() => setShowSlideshow(false)}
-        />
-      )}
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Background */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center animate-[ken-burns_30s_ease-in-out_infinite]"
+        style={{ backgroundImage: 'url(/images/background/background_damngo.png)' }}
+      />
+      
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
+      
+      {/* Content */}
+      <div className="relative z-10">
+        {showSlideshow && (
+          <Slideshow
+            images={WEDDING_IMAGES}
+            initialIndex={slideshowIndex}
+            onClose={() => setShowSlideshow(false)}
+          />
+        )}
 
-      <MusicPlayer playlist={MUSIC_PLAYLIST} />
+        <MusicPlayer playlist={MUSIC_PLAYLIST} />
+      </div>
     </div>
   );
 };
