@@ -4,10 +4,10 @@ interface MusicPlayerProps {
   playlist: { title: string; src: string }[];
 }
 
-const audioCache = new Map<string, Blob>();
-const audioCacheUrls = new Map<string, string>();
+const audioCache = new Map();
+const audioCacheUrls = new Map();
 
-const preloadNextTrack = async (track: { title: string; src: string }) => {
+const preloadNextTrack = async (track) => {
   if (audioCache.has(track.src)) {
     return;
   }
@@ -26,7 +26,7 @@ const preloadNextTrack = async (track: { title: string; src: string }) => {
   }
 };
 
-const freePreviousTrack = (src: string) => {
+const freePreviousTrack = (src) => {
   const objectUrl = audioCacheUrls.get(src);
   if (objectUrl) {
     URL.revokeObjectURL(objectUrl);
@@ -36,32 +36,28 @@ const freePreviousTrack = (src: string) => {
   console.log(`🗑️ Freed cache: ${src}`);
 };
 
-const getAudioUrl = (src: string) => {
+const getAudioUrl = (src) => {
   return audioCacheUrls.get(src) || src;
 };
 
-const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
+const MusicPlayer = ({ playlist }) => {
   const [currentTrack, setCurrentTrack] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef(null);
   const hasAutoPlayedRef = useRef(false);
 
-  // Auto-play on mount
   useEffect(() => {
     if (!hasAutoPlayedRef.current && audioRef.current) {
       hasAutoPlayedRef.current = true;
       
-      // Preload first track
       preloadNextTrack(playlist[0]).then(() => {
-        // Try to autoplay
         const playPromise = audioRef.current?.play();
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
               setIsPlaying(true);
               console.log('🎵 Auto-play started');
-              // Preload next track
               const nextIndex = (0 + 1) % playlist.length;
               preloadNextTrack(playlist[nextIndex]);
             })
@@ -74,22 +70,17 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     }
   }, [playlist]);
 
-  // Preload next track when current track changes
   useEffect(() => {
     const nextIndex = (currentTrack + 1) % playlist.length;
-    const prevIndex = (currentTrack - 1 + playlist.length) % playlist.length;
     
-    // Preload next
     preloadNextTrack(playlist[nextIndex]);
     
-    // Free previous (but keep current and next)
     if (currentTrack > 1) {
       const twoTracksAgo = (currentTrack - 2 + playlist.length) % playlist.length;
       freePreviousTrack(playlist[twoTracksAgo].src);
     }
   }, [currentTrack, playlist]);
 
-  // Handle play/pause
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.loop = false;
@@ -99,7 +90,6 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
           playPromise.catch((error) => {
             console.error('Play error:', error);
             setIsPlaying(false);
-            // Retry after 1 second
             setTimeout(() => {
               if (audioRef.current && retryCount < 3) {
                 setRetryCount(prev => prev + 1);
@@ -119,16 +109,14 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     }
   }, [isPlaying, currentTrack, retryCount]);
 
-  // Error handling with retry
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleError = (e: Event) => {
+    const handleError = (e) => {
       console.error('❌ Audio error:', e);
       setIsPlaying(false);
       
-      // Auto retry
       if (retryCount < 3) {
         console.log(`🔄 Retrying... (${retryCount + 1}/3)`);
         setTimeout(() => {
@@ -155,6 +143,20 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
       audio.removeEventListener('canplay', handleCanPlay);
     };
   }, [retryCount]);
+
+  useEffect(() => {
+    const handleClick = () => {
+      setIsPlaying(prev => !prev);
+    };
+
+    document.addEventListener('click', handleClick);
+    document.addEventListener('touchend', handleClick);
+
+    return () => {
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('touchend', handleClick);
+    };
+  }, []);
 
   const handleNext = () => {
     setCurrentTrack((prev) => (prev + 1) % playlist.length);
