@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause } from "lucide-react";
 
 interface MusicPlayerProps {
   playlist: { title: string; src: string }[];
@@ -157,44 +156,19 @@ const MusicPlayer = ({ playlist }: MusicPlayerProps) => {
     };
   }, [retryCount]);
 
-  const togglePlay = () => {
-    setIsPlaying(!isPlaying);
-  };
-
   const handleNext = () => {
     setCurrentTrack((prev) => (prev + 1) % playlist.length);
     setIsPlaying(true);
   };
 
   return (
-    <>
-      <audio
-        ref={audioRef}
-        src={getAudioUrl(playlist[currentTrack]?.src)}
-        onEnded={handleNext}
-        loop={false}
-        preload="auto"
-      />
-
-      <button
-        onClick={togglePlay}
-        className="fixed top-4 right-4 z-[60] h-14 w-14 rounded-full shadow-lg bg-gradient-to-br from-pink-400 to-purple-400 hover:opacity-90 flex items-center justify-center transition-all hover:scale-110"
-        title={isPlaying ? "Tạm dừng" : "Phát nhạc"}
-        style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
-      >
-        {isPlaying ? (
-          <Pause className="h-6 w-6 text-white" />
-        ) : (
-          <Play className="h-6 w-6 text-white ml-0.5" />
-        )}
-      </button>
-
-      {retryCount > 0 && (
-        <div className="fixed bottom-4 right-4 z-[60] bg-yellow-500/90 text-white px-4 py-2 rounded-lg text-sm backdrop-blur-sm">
-          🔄 Đang thử lại... ({retryCount}/3)
-        </div>
-      )}
-    </>
+    <audio
+      ref={audioRef}
+      src={getAudioUrl(playlist[currentTrack]?.src)}
+      onEnded={handleNext}
+      loop={false}
+      preload="auto"
+    />
   );
 };
 
