@@ -4,22 +4,22 @@ import Slideshow from "@/components/Slideshow";
 import MusicPlayer from "@/components/MusicPlayer";
 
 const WEDDING_IMAGES = [
-  "/images/wedding/1.JPG",
+  "/images/wedding/1.jpg",
   "/images/wedding/2.JPG",
   "/images/wedding/3.JPG",
-  "/images/wedding/4.jpg",
+  "/images/wedding/4.JPG",
   "/images/wedding/5.JPG",
-  "/images/wedding/6.jpg",
+  "/images/wedding/6.JPG",
   "/images/wedding/7.JPG",
   "/images/wedding/8.JPG",
-  "/images/wedding/9.jpg",
+  "/images/wedding/9.JPG",
   "/images/wedding/10.JPG",
-  "/images/wedding/11.JPG",
+  "/images/wedding/11.jpg",
   "/images/wedding/12.JPG",
-  "/images/wedding/13.jpg",
-  "/images/wedding/14.jpg",
-  "/images/wedding/15.jpg",
-  "/images/wedding/16.jpg",
+  "/images/wedding/13.JPG",
+  "/images/wedding/14.JPG",
+  "/images/wedding/15.JPG",
+  "/images/wedding/16.JPG",
   "/images/wedding/17.jpg"
 ];
 
