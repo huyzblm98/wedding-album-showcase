@@ -4,7 +4,7 @@ import Slideshow from "@/components/Slideshow";
 import MusicPlayer from "@/components/MusicPlayer";
 
 const WEDDING_IMAGES = [
-  "/images/wedding/1.jpg",
+  "/images/wedding/1.JPG",
   "/images/wedding/2.JPG",
   "/images/wedding/3.JPG",
   "/images/wedding/4.jpg",
