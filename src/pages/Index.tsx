@@ -20,6 +20,9 @@ const WEDDING_IMAGES = [
   "/images/wedding/12.JPG",
   "/images/wedding/13.jpg",
   "/images/wedding/14.jpg",
+  "/images/wedding/15.jpg",
+  "/images/wedding/16.jpg",
+  "/images/wedding/17.jpg"
 ];
 
 const MUSIC_PLAYLIST = [
